@@ -6,10 +6,12 @@ from sqlalchemy.orm import Session
 from app.db.base import Base
 from app.db.session import engine, get_db
 from app.schemas.ask import AskRequest, AskResponse, SourceRead
+from app.schemas.ingest import NotionIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate, KnowledgeItemRead
 from app.schemas.seed import SeedResponse
 from app.services.knowledge import (
     create_knowledge_item,
+    ingest_notion,
     list_knowledge_items,
     retrieve_knowledge,
     seed_knowledge_items,
@@ -28,6 +30,11 @@ app = FastAPI(title="Authority AI API", lifespan=lifespan)
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "authority-ai-api"}
+
+
+@app.post("/ingest/notion", response_model=KnowledgeItemRead, status_code=201)
+def ingest_notion_content(payload: NotionIngestRequest, db: Session = Depends(get_db)):
+    return ingest_notion(db, payload)
 
 
 @app.post("/knowledge", response_model=KnowledgeItemRead, status_code=201)

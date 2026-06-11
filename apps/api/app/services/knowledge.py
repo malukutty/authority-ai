@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.knowledge_item import KnowledgeItem
+from app.schemas.ingest import NotionIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate
 
 RESTRICTED_DOMAINS = {
@@ -18,6 +19,49 @@ def user_can_access_domain(domain: str, user_role: str) -> bool:
         return True
 
     return user_role in allowed_roles
+
+
+def classify_content(content: str) -> tuple[str, str, str]:
+    text = content.lower()
+
+    pricing_keywords = ["pricing", "price", "plan", "package"]
+    if any(keyword in text for keyword in pricing_keywords):
+        return "decisions", "pricing", "decision"
+
+    icp_keywords = ["icp", "ideal customer", "target customer"]
+    if any(keyword in text for keyword in icp_keywords):
+        return "mission", "icp", "definition"
+
+    if "mrr" in text:
+        return "financial", "mrr", "metric"
+    if "arr" in text:
+        return "financial", "arr", "metric"
+    if "runway" in text:
+        return "financial", "runway", "metric"
+    if "burn" in text:
+        return "financial", "burn", "metric"
+    if "cash" in text:
+        return "financial", "cash", "metric"
+
+    engineering_keywords = ["blocker", "bug", "issue", "sprint"]
+    if any(keyword in text for keyword in engineering_keywords):
+        return "engineering", "blocker", "blocker"
+
+    return "decisions", "general", "note"
+
+
+def ingest_notion(db: Session, payload: NotionIngestRequest) -> KnowledgeItem:
+    domain, sub_domain, _knowledge_type = classify_content(payload.content)
+
+    item_payload = KnowledgeItemCreate(
+        domain=domain,
+        sub_domain=sub_domain,
+        content=payload.content,
+        source_system="notion",
+        source_url=payload.source_url,
+        trust_rank=4,
+    )
+    return create_knowledge_item(db, item_payload)
 
 
 def classify_question(question: str) -> tuple[list[str], list[str]]:
@@ -54,6 +98,28 @@ def classify_question(question: str) -> tuple[list[str], list[str]]:
         return ["mission"], ["icp"]
     if any(keyword in q for keyword in ["product", "mission", "building"]):
         return ["mission"], ["product"]
+
+    pricing_keywords = ["pricing", "price", "plan", "package", "charge", "cost"]
+    decision_keywords = [
+        "decided",
+        "decide",
+        "decision",
+        "choose",
+        "chose",
+        "agreed",
+        "rationale",
+        "why did",
+    ]
+
+    has_pricing = any(keyword in q for keyword in pricing_keywords)
+    has_decision = any(keyword in q for keyword in decision_keywords)
+
+    if has_pricing and has_decision:
+        return ["decisions"], ["pricing"]
+    if has_pricing:
+        return ["decisions"], ["pricing"]
+    if has_decision:
+        return ["decisions"], []
 
     return [], []
 
@@ -144,21 +210,30 @@ def list_knowledge_items(db: Session) -> list[KnowledgeItem]:
 def retrieve_knowledge(db: Session, question: str, user_role: str) -> list[KnowledgeItem]:
     domains, sub_domains = classify_question(question)
 
-    if not sub_domains:
-        return []
-
     allowed_domains = [
         domain for domain in domains if user_can_access_domain(domain, user_role)
     ]
 
+    print(f"question: {question}")
+    print(f"classified domains: {domains}")
+    print(f"classified sub_domains: {sub_domains}")
+    print(f"allowed_domains: {allowed_domains}")
+
     if not allowed_domains:
+        print("number of items found: 0")
         return []
 
-    items = db.scalars(
-        select(KnowledgeItem).where(
+    if sub_domains:
+        query = select(KnowledgeItem).where(
             KnowledgeItem.domain.in_(allowed_domains),
             KnowledgeItem.sub_domain.in_(sub_domains),
         )
-    ).all()
+    else:
+        query = select(KnowledgeItem).where(
+            KnowledgeItem.domain.in_(allowed_domains),
+        )
+
+    items = db.scalars(query).all()
+    print(f"number of items found: {len(items)}")
 
     return sorted(items, key=lambda item: item.trust_rank)
