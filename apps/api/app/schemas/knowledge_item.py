@@ -7,6 +7,7 @@ class KnowledgeItemCreate(BaseModel):
     content: str
     source_system: str = Field(default="manual", max_length=128)
     source_url: str = Field(default="", max_length=2048)
+    source_priority: int | None = None
     trust_rank: int
     #allowed_roles: list[str] = Field(default=["founder", "admin", "member"])
 
@@ -20,5 +21,6 @@ class KnowledgeItemRead(BaseModel):
     content: str
     source_system: str
     source_url: str
+    source_priority: int
     trust_rank: int
     #allowed_roles: list[str]

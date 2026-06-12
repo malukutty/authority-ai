@@ -14,5 +14,6 @@ class KnowledgeItem(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     source_system: Mapped[str] = mapped_column(String(128), nullable=False)
     source_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    source_priority: Mapped[int] = mapped_column(Integer, nullable=False, default=99)
     trust_rank: Mapped[int] = mapped_column(Integer, nullable=False)
     #allowed_roles: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)

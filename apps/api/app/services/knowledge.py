@@ -2,8 +2,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.knowledge_item import KnowledgeItem
-from app.schemas.ingest import NotionIngestRequest
+from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate
+from app.services.source_priority import get_source_priority
 
 RESTRICTED_DOMAINS = {
     "financial": ["founder", "admin"],
@@ -48,6 +49,18 @@ def classify_content(content: str) -> tuple[str, str, str]:
         return "engineering", "blocker", "blocker"
 
     return "decisions", "general", "note"
+
+
+def ingest_stripe(db: Session, payload: StripeIngestRequest) -> KnowledgeItem:
+    metric_label = payload.metric.upper()
+    item_payload = KnowledgeItemCreate(
+        domain="financial",
+        sub_domain=payload.metric.lower(),
+        content=f"Current {metric_label} is {payload.value}",
+        source_system="stripe",
+        trust_rank=1,
+    )
+    return create_knowledge_item(db, item_payload)
 
 
 def ingest_notion(db: Session, payload: NotionIngestRequest) -> KnowledgeItem:
@@ -186,7 +199,9 @@ def seed_knowledge_items(db: Session) -> tuple[int, int]:
             count_skipped += 1
             continue
 
-        db.add(KnowledgeItem(**payload.model_dump()))
+        item_data = payload.model_dump()
+        item_data["source_priority"] = get_source_priority(payload.source_system)
+        db.add(KnowledgeItem(**item_data))
         count_created += 1
 
     db.commit()
@@ -194,7 +209,11 @@ def seed_knowledge_items(db: Session) -> tuple[int, int]:
 
 
 def create_knowledge_item(db: Session, payload: KnowledgeItemCreate) -> KnowledgeItem:
-    item = KnowledgeItem(**payload.model_dump())
+    item_data = payload.model_dump()
+    if item_data["source_priority"] is None:
+        item_data["source_priority"] = get_source_priority(payload.source_system)
+
+    item = KnowledgeItem(**item_data)
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -203,7 +222,12 @@ def create_knowledge_item(db: Session, payload: KnowledgeItemCreate) -> Knowledg
 
 def list_knowledge_items(db: Session) -> list[KnowledgeItem]:
     return list(
-        db.scalars(select(KnowledgeItem).order_by(KnowledgeItem.trust_rank)).all()
+        db.scalars(
+            select(KnowledgeItem).order_by(
+                KnowledgeItem.source_priority,
+                KnowledgeItem.trust_rank,
+            )
+        ).all()
     )
 
 
@@ -236,4 +260,4 @@ def retrieve_knowledge(db: Session, question: str, user_role: str) -> list[Knowl
     items = db.scalars(query).all()
     print(f"number of items found: {len(items)}")
 
-    return sorted(items, key=lambda item: item.trust_rank)
+    return sorted(items, key=lambda item: (item.source_priority, item.trust_rank))

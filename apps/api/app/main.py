@@ -6,21 +6,24 @@ from sqlalchemy.orm import Session
 from app.db.base import Base
 from app.db.session import engine, get_db
 from app.schemas.ask import AskRequest, AskResponse, SourceRead
-from app.schemas.ingest import NotionIngestRequest
+from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate, KnowledgeItemRead
 from app.schemas.seed import SeedResponse
 from app.services.knowledge import (
     create_knowledge_item,
     ingest_notion,
+    ingest_stripe,
     list_knowledge_items,
     retrieve_knowledge,
     seed_knowledge_items,
 )
+from app.services.source_priority import ensure_source_priority_column
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_source_priority_column()
     yield
 
 
@@ -35,6 +38,11 @@ def health_check():
 @app.post("/ingest/notion", response_model=KnowledgeItemRead, status_code=201)
 def ingest_notion_content(payload: NotionIngestRequest, db: Session = Depends(get_db)):
     return ingest_notion(db, payload)
+
+
+@app.post("/ingest/stripe", response_model=KnowledgeItemRead, status_code=201)
+def ingest_stripe_content(payload: StripeIngestRequest, db: Session = Depends(get_db)):
+    return ingest_stripe(db, payload)
 
 
 @app.post("/knowledge", response_model=KnowledgeItemRead, status_code=201)
