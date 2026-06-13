@@ -140,17 +140,25 @@ def classify_question(question: str) -> tuple[list[str], list[str]]:
 SEED_ITEMS = [
     KnowledgeItemCreate(
         domain="financial",
-        sub_domain="runway",
-        content="Current runway is 14 months",
-        source_system="manual_seed",
+        sub_domain="mrr",
+        content="Current MRR is $25000",
+        source_system="stripe",
         trust_rank=1,
     ),
     KnowledgeItemCreate(
         domain="financial",
-        sub_domain="mrr",
-        content="Current MRR is $25000",
-        source_system="manual_seed",
+        sub_domain="runway",
+        content="Current runway is 14 months",
+        source_system="notion",
         trust_rank=1,
+    ),
+    KnowledgeItemCreate(
+        domain="decisions",
+        sub_domain="pricing",
+        content="We decided to price Authority AI at $500/month for seed-stage startups.",
+        source_system="notion",
+        source_url="https://notion.so/example",
+        trust_rank=4,
     ),
     KnowledgeItemCreate(
         domain="mission",

@@ -5,10 +5,17 @@ from sqlalchemy.orm import Session
 
 from app.db.base import Base
 from app.db.session import engine, get_db
+import app.models  # noqa: F401 — register models with Base.metadata
 from app.schemas.ask import AskRequest, AskResponse, SourceRead
 from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate, KnowledgeItemRead
-from app.schemas.seed import SeedResponse
+from app.schemas.knowledge_relationship import (
+    KnowledgeItemRelationshipsResponse,
+    KnowledgeRelationshipCreate,
+    KnowledgeRelationshipRead,
+)
+from app.schemas.seed import ResetDemoResponse, SeedResponse
+from app.services.demo import reset_demo
 from app.services.knowledge import (
     create_knowledge_item,
     ingest_notion,
@@ -16,6 +23,11 @@ from app.services.knowledge import (
     list_knowledge_items,
     retrieve_knowledge,
     seed_knowledge_items,
+)
+from app.services.relationship import (
+    create_knowledge_relationship,
+    get_knowledge_relationships,
+    seed_knowledge_relationships,
 )
 from app.services.source_priority import ensure_source_priority_column
 
@@ -50,15 +62,44 @@ def create_knowledge(payload: KnowledgeItemCreate, db: Session = Depends(get_db)
     return create_knowledge_item(db, payload)
 
 
+@app.post("/relationship", response_model=KnowledgeRelationshipRead, status_code=201)
+def create_relationship(
+    payload: KnowledgeRelationshipCreate, db: Session = Depends(get_db)
+):
+    return create_knowledge_relationship(db, payload)
+
+
 @app.get("/knowledge", response_model=list[KnowledgeItemRead])
 def get_knowledge(db: Session = Depends(get_db)):
     return list_knowledge_items(db)
 
 
+@app.get("/knowledge/{knowledge_id}/relationships", response_model=KnowledgeItemRelationshipsResponse)
+def get_knowledge_item_relationships(
+    knowledge_id: int, db: Session = Depends(get_db)
+):
+    item, relationships = get_knowledge_relationships(db, knowledge_id)
+    return KnowledgeItemRelationshipsResponse(
+        knowledge_item=item,
+        relationships=relationships,
+    )
+
+
 @app.post("/seed", response_model=SeedResponse)
 def seed_knowledge(db: Session = Depends(get_db)):
     count_created, count_skipped = seed_knowledge_items(db)
-    return SeedResponse(count_created=count_created, count_skipped=count_skipped)
+    relationships_created, relationships_skipped = seed_knowledge_relationships(db)
+    return SeedResponse(
+        count_created=count_created,
+        count_skipped=count_skipped,
+        relationships_created=relationships_created,
+        relationships_skipped=relationships_skipped,
+    )
+
+
+@app.delete("/reset-demo", response_model=ResetDemoResponse)
+def reset_demo_data(db: Session = Depends(get_db)):
+    return reset_demo(db)
 
 
 @app.post("/ask", response_model=AskResponse)
