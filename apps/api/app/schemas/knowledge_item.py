@@ -9,7 +9,7 @@ class KnowledgeItemCreate(BaseModel):
     source_url: str = Field(default="", max_length=2048)
     source_priority: int | None = None
     trust_rank: int
-    #allowed_roles: list[str] = Field(default=["founder", "admin", "member"])
+    allowed_roles: list[str] = Field(default_factory=lambda: ["founder", "admin", "member"])
 
 
 class KnowledgeItemRead(BaseModel):
@@ -23,4 +23,4 @@ class KnowledgeItemRead(BaseModel):
     source_url: str
     source_priority: int
     trust_rank: int
-    #allowed_roles: list[str]
+    allowed_roles: list[str]

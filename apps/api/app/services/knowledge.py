@@ -6,20 +6,9 @@ from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate
 from app.services.source_priority import get_source_priority
 
-RESTRICTED_DOMAINS = {
-    "financial": ["founder", "admin"],
-    "pipeline": ["founder", "admin"],
-    "team": ["founder", "admin"],
-}
 
-
-def user_can_access_domain(domain: str, user_role: str) -> bool:
-    allowed_roles = RESTRICTED_DOMAINS.get(domain)
-
-    if allowed_roles is None:
-        return True
-
-    return user_role in allowed_roles
+def user_can_access_item(item: KnowledgeItem, user_role: str) -> bool:
+    return user_role in item.allowed_roles
 
 
 def classify_content(content: str) -> tuple[str, str, str]:
@@ -59,6 +48,7 @@ def ingest_stripe(db: Session, payload: StripeIngestRequest) -> KnowledgeItem:
         content=f"Current {metric_label} is {payload.value}",
         source_system="stripe",
         trust_rank=1,
+        allowed_roles=payload.allowed_roles,
     )
     return create_knowledge_item(db, item_payload)
 
@@ -73,6 +63,7 @@ def ingest_notion(db: Session, payload: NotionIngestRequest) -> KnowledgeItem:
         source_system="notion",
         source_url=payload.source_url,
         trust_rank=4,
+        allowed_roles=payload.allowed_roles,
     )
     return create_knowledge_item(db, item_payload)
 
@@ -144,6 +135,7 @@ SEED_ITEMS = [
         content="Current MRR is $25000",
         source_system="stripe",
         trust_rank=1,
+        allowed_roles=["founder", "finance"],
     ),
     KnowledgeItemCreate(
         domain="financial",
@@ -151,6 +143,7 @@ SEED_ITEMS = [
         content="Current runway is 14 months",
         source_system="notion",
         trust_rank=1,
+        allowed_roles=["founder", "finance"],
     ),
     KnowledgeItemCreate(
         domain="decisions",
@@ -159,6 +152,7 @@ SEED_ITEMS = [
         source_system="notion",
         source_url="https://notion.so/example",
         trust_rank=4,
+        allowed_roles=["founder", "sales"],
     ),
     KnowledgeItemCreate(
         domain="mission",
@@ -166,6 +160,7 @@ SEED_ITEMS = [
         content="Ideal customer profile is YC-backed B2B SaaS startups with 5-50 employees",
         source_system="manual_seed",
         trust_rank=4,
+        allowed_roles=["founder", "member"],
     ),
     KnowledgeItemCreate(
         domain="mission",
@@ -173,6 +168,7 @@ SEED_ITEMS = [
         content="Authority AI is a schema-first company brain for startup teams",
         source_system="manual_seed",
         trust_rank=4,
+        allowed_roles=["founder", "member"],
     ),
     KnowledgeItemCreate(
         domain="pipeline",
@@ -180,6 +176,7 @@ SEED_ITEMS = [
         content="Most common objection is security concerns around integrations",
         source_system="manual_seed",
         trust_rank=5,
+        allowed_roles=["founder", "sales", "member"],
     ),
     KnowledgeItemCreate(
         domain="engineering",
@@ -187,8 +184,41 @@ SEED_ITEMS = [
         content="Current blocker is Slack OAuth implementation",
         source_system="manual_seed",
         trust_rank=3,
+        allowed_roles=["founder", "engineering"],
     ),
 ]
+
+
+def _find_seed_item(db: Session, payload: KnowledgeItemCreate) -> KnowledgeItem | None:
+    return db.scalar(
+        select(KnowledgeItem).where(
+            KnowledgeItem.domain == payload.domain,
+            KnowledgeItem.sub_domain == payload.sub_domain,
+            KnowledgeItem.content == payload.content,
+        )
+    )
+
+
+def sync_seed_allowed_roles() -> int:
+    from app.db.session import SessionLocal
+
+    updated = 0
+    with SessionLocal() as db:
+        for payload in SEED_ITEMS:
+            existing = _find_seed_item(db, payload)
+            if existing is None:
+                continue
+
+            desired_roles = list(payload.allowed_roles)
+            current_roles = list(existing.allowed_roles)
+            if current_roles != desired_roles:
+                existing.allowed_roles = desired_roles
+                updated += 1
+
+        if updated:
+            db.commit()
+
+    return updated
 
 
 def seed_knowledge_items(db: Session) -> tuple[int, int]:
@@ -196,14 +226,11 @@ def seed_knowledge_items(db: Session) -> tuple[int, int]:
     count_skipped = 0
 
     for payload in SEED_ITEMS:
-        existing = db.scalar(
-            select(KnowledgeItem).where(
-                KnowledgeItem.domain == payload.domain,
-                KnowledgeItem.sub_domain == payload.sub_domain,
-                KnowledgeItem.content == payload.content,
-            )
-        )
+        existing = _find_seed_item(db, payload)
         if existing:
+            desired_roles = list(payload.allowed_roles)
+            if list(existing.allowed_roles) != desired_roles:
+                existing.allowed_roles = desired_roles
             count_skipped += 1
             continue
 
@@ -242,30 +269,31 @@ def list_knowledge_items(db: Session) -> list[KnowledgeItem]:
 def retrieve_knowledge(db: Session, question: str, user_role: str) -> list[KnowledgeItem]:
     domains, sub_domains = classify_question(question)
 
-    allowed_domains = [
-        domain for domain in domains if user_can_access_domain(domain, user_role)
-    ]
-
     print(f"question: {question}")
     print(f"classified domains: {domains}")
     print(f"classified sub_domains: {sub_domains}")
-    print(f"allowed_domains: {allowed_domains}")
+    print(f"user_role: {user_role}")
 
-    if not allowed_domains:
+    if not domains:
         print("number of items found: 0")
         return []
 
     if sub_domains:
         query = select(KnowledgeItem).where(
-            KnowledgeItem.domain.in_(allowed_domains),
+            KnowledgeItem.domain.in_(domains),
             KnowledgeItem.sub_domain.in_(sub_domains),
         )
     else:
         query = select(KnowledgeItem).where(
-            KnowledgeItem.domain.in_(allowed_domains),
+            KnowledgeItem.domain.in_(domains),
         )
 
     items = db.scalars(query).all()
-    print(f"number of items found: {len(items)}")
+    permitted_items = [
+        item for item in items if user_can_access_item(item, user_role)
+    ]
+    print(f"number of items found: {len(permitted_items)}")
 
-    return sorted(items, key=lambda item: (item.source_priority, item.trust_rank))
+    return sorted(
+        permitted_items, key=lambda item: (item.source_priority, item.trust_rank)
+    )

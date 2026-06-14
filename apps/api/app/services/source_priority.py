@@ -44,3 +44,22 @@ def ensure_source_priority_column() -> None:
                 ),
                 {"priority": priority, "source_system": source_system},
             )
+
+
+def ensure_allowed_roles_column() -> None:
+    inspector = inspect(engine)
+    if "knowledge_items" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("knowledge_items")}
+    if "allowed_roles" in columns:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE knowledge_items "
+                "ADD COLUMN allowed_roles VARCHAR[] NOT NULL "
+                "DEFAULT ARRAY['founder','admin','member']::VARCHAR[]"
+            )
+        )

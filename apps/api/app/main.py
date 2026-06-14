@@ -23,19 +23,25 @@ from app.services.knowledge import (
     list_knowledge_items,
     retrieve_knowledge,
     seed_knowledge_items,
+    sync_seed_allowed_roles,
 )
 from app.services.relationship import (
     create_knowledge_relationship,
     get_knowledge_relationships,
     seed_knowledge_relationships,
 )
-from app.services.source_priority import ensure_source_priority_column
+from app.services.source_priority import (
+    ensure_allowed_roles_column,
+    ensure_source_priority_column,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     ensure_source_priority_column()
+    ensure_allowed_roles_column()
+    sync_seed_allowed_roles()
     yield
 
 
