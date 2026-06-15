@@ -1,0 +1,27 @@
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class KnowledgeDefinitionCreate(BaseModel):
+    domain: str = Field(..., max_length=64)
+    sub_domain: str = Field(..., max_length=128)
+    name: str = Field(..., max_length=256)
+    description: str
+    source_of_truth: str = Field(..., max_length=128)
+    allowed_roles: list[str]
+
+
+class KnowledgeDefinitionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    domain: str
+    sub_domain: str
+    name: str
+    description: str
+    source_of_truth: str
+    allowed_roles: list[str]
+
+
+class BrainSubDomainRead(BaseModel):
+    sub_domain: str
+    source_of_truth: str
