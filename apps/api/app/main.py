@@ -7,7 +7,7 @@ from app.db.base import Base
 from app.db.session import engine, get_db
 import app.models  # noqa: F401 — register models with Base.metadata
 from app.schemas.ask import AskRequest, AskResponse, SourceRead
-from app.schemas.brain import BrainSubDomainRead
+from app.schemas.brain import BrainCoverageResponse, BrainSubDomainRead
 from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate, KnowledgeItemRead
 from app.schemas.knowledge_relationship import (
@@ -16,7 +16,7 @@ from app.schemas.knowledge_relationship import (
     KnowledgeRelationshipRead,
 )
 from app.schemas.seed import ResetDemoResponse, SeedResponse
-from app.services.brain import get_brain_structure, initialize_brain
+from app.services.brain import get_brain_coverage, get_brain_structure, initialize_brain
 from app.services.demo import reset_demo
 from app.services.knowledge import (
     create_knowledge_item,
@@ -59,6 +59,11 @@ def health_check():
 @app.get("/brain", response_model=dict[str, list[BrainSubDomainRead]])
 def get_brain(db: Session = Depends(get_db)):
     return get_brain_structure(db)
+
+
+@app.get("/brain/coverage", response_model=BrainCoverageResponse)
+def get_brain_coverage_endpoint(db: Session = Depends(get_db)):
+    return get_brain_coverage(db)
 
 
 @app.post("/ingest/notion", response_model=KnowledgeItemRead, status_code=201)

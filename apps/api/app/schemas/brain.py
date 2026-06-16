@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -25,3 +27,14 @@ class KnowledgeDefinitionRead(BaseModel):
 class BrainSubDomainRead(BaseModel):
     sub_domain: str
     source_of_truth: str
+
+
+class BrainCoverageSlotRead(BaseModel):
+    sub_domain: str
+    name: str
+    status: Literal["populated", "missing"]
+
+
+class BrainCoverageResponse(BaseModel):
+    coverage_percent: int
+    domains: dict[str, list[BrainCoverageSlotRead]]

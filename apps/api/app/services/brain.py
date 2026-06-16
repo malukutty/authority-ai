@@ -2,7 +2,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.knowledge_definition import KnowledgeDefinition
-from app.schemas.brain import BrainSubDomainRead, KnowledgeDefinitionCreate
+from app.models.knowledge_item import KnowledgeItem
+from app.schemas.brain import (
+    BrainCoverageResponse,
+    BrainCoverageSlotRead,
+    BrainSubDomainRead,
+    KnowledgeDefinitionCreate,
+)
 
 BRAIN_DEFINITIONS = [
     KnowledgeDefinitionCreate(
@@ -113,3 +119,43 @@ def get_brain_structure(db: Session) -> dict[str, list[BrainSubDomainRead]]:
         )
 
     return brain
+
+
+def get_brain_coverage(db: Session) -> BrainCoverageResponse:
+    definitions = db.scalars(
+        select(KnowledgeDefinition).order_by(
+            KnowledgeDefinition.domain,
+            KnowledgeDefinition.sub_domain,
+        )
+    ).all()
+
+    populated_slots = {
+        (domain, sub_domain)
+        for domain, sub_domain in db.execute(
+            select(KnowledgeItem.domain, KnowledgeItem.sub_domain).distinct()
+        ).all()
+    }
+
+    domains: dict[str, list[BrainCoverageSlotRead]] = {}
+    populated_count = 0
+
+    for definition in definitions:
+        is_populated = (definition.domain, definition.sub_domain) in populated_slots
+        if is_populated:
+            populated_count += 1
+
+        domains.setdefault(definition.domain, []).append(
+            BrainCoverageSlotRead(
+                sub_domain=definition.sub_domain,
+                name=definition.name,
+                status="populated" if is_populated else "missing",
+            )
+        )
+
+    total = len(definitions)
+    coverage_percent = round(populated_count / total * 100) if total else 0
+
+    return BrainCoverageResponse(
+        coverage_percent=coverage_percent,
+        domains=domains,
+    )
