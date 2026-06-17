@@ -38,3 +38,16 @@ class BrainCoverageSlotRead(BaseModel):
 class BrainCoverageResponse(BaseModel):
     coverage_percent: int
     domains: dict[str, list[BrainCoverageSlotRead]]
+
+
+class BrainRecommendationRead(BaseModel):
+    domain: str
+    sub_domain: str
+    name: str
+    source_of_truth: str
+    reason: str
+    priority: Literal["high", "medium", "low"]
+
+
+class BrainRecommendationsResponse(BaseModel):
+    recommendations: list[BrainRecommendationRead]

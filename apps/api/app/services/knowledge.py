@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -171,14 +172,6 @@ SEED_ITEMS = [
         allowed_roles=["founder", "member"],
     ),
     KnowledgeItemCreate(
-        domain="pipeline",
-        sub_domain="objection",
-        content="Most common objection is security concerns around integrations",
-        source_system="manual_seed",
-        trust_rank=5,
-        allowed_roles=["founder", "sales", "member"],
-    ),
-    KnowledgeItemCreate(
         domain="engineering",
         sub_domain="blocker",
         content="Current blocker is Slack OAuth implementation",
@@ -253,6 +246,18 @@ def create_knowledge_item(db: Session, payload: KnowledgeItemCreate) -> Knowledg
     db.commit()
     db.refresh(item)
     return item
+
+
+def delete_knowledge_item(db: Session, knowledge_id: int) -> None:
+    item = db.get(KnowledgeItem, knowledge_id)
+    if item is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"KnowledgeItem with id {knowledge_id} not found",
+        )
+
+    db.delete(item)
+    db.commit()
 
 
 def list_knowledge_items(db: Session) -> list[KnowledgeItem]:

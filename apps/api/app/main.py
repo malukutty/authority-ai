@@ -7,7 +7,11 @@ from app.db.base import Base
 from app.db.session import engine, get_db
 import app.models  # noqa: F401 — register models with Base.metadata
 from app.schemas.ask import AskRequest, AskResponse, SourceRead
-from app.schemas.brain import BrainCoverageResponse, BrainSubDomainRead
+from app.schemas.brain import (
+    BrainCoverageResponse,
+    BrainRecommendationsResponse,
+    BrainSubDomainRead,
+)
 from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate, KnowledgeItemRead
 from app.schemas.knowledge_relationship import (
@@ -16,10 +20,16 @@ from app.schemas.knowledge_relationship import (
     KnowledgeRelationshipRead,
 )
 from app.schemas.seed import ResetDemoResponse, SeedResponse
-from app.services.brain import get_brain_coverage, get_brain_structure, initialize_brain
+from app.services.brain import (
+    get_brain_coverage,
+    get_brain_recommendations,
+    get_brain_structure,
+    initialize_brain,
+)
 from app.services.demo import reset_demo
 from app.services.knowledge import (
     create_knowledge_item,
+    delete_knowledge_item,
     ingest_notion,
     ingest_stripe,
     list_knowledge_items,
@@ -66,6 +76,11 @@ def get_brain_coverage_endpoint(db: Session = Depends(get_db)):
     return get_brain_coverage(db)
 
 
+@app.get("/brain/recommendations", response_model=BrainRecommendationsResponse)
+def get_brain_recommendations_endpoint(db: Session = Depends(get_db)):
+    return get_brain_recommendations(db)
+
+
 @app.post("/ingest/notion", response_model=KnowledgeItemRead, status_code=201)
 def ingest_notion_content(payload: NotionIngestRequest, db: Session = Depends(get_db)):
     return ingest_notion(db, payload)
@@ -91,6 +106,11 @@ def create_relationship(
 @app.get("/knowledge", response_model=list[KnowledgeItemRead])
 def get_knowledge(db: Session = Depends(get_db)):
     return list_knowledge_items(db)
+
+
+@app.delete("/knowledge/{knowledge_id}", status_code=204)
+def delete_knowledge(knowledge_id: int, db: Session = Depends(get_db)):
+    delete_knowledge_item(db, knowledge_id)
 
 
 @app.get("/knowledge/{knowledge_id}/relationships", response_model=KnowledgeItemRelationshipsResponse)

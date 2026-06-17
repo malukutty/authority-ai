@@ -1,3 +1,5 @@
+from typing import Literal
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -6,6 +8,8 @@ from app.models.knowledge_item import KnowledgeItem
 from app.schemas.brain import (
     BrainCoverageResponse,
     BrainCoverageSlotRead,
+    BrainRecommendationRead,
+    BrainRecommendationsResponse,
     BrainSubDomainRead,
     KnowledgeDefinitionCreate,
 )
@@ -68,6 +72,19 @@ BRAIN_DEFINITIONS = [
         allowed_roles=["founder", "sales"],
     ),
 ]
+
+
+RECOMMENDATION_REASON = "Knowledge definition exists but no knowledge item found."
+
+DOMAIN_PRIORITY: dict[str, Literal["high", "medium", "low"]] = {
+    "financial": "high",
+    "pipeline": "high",
+    "decisions": "medium",
+    "engineering": "medium",
+    "mission": "low",
+}
+
+PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
 def seed_brain_definitions(db: Session) -> tuple[int, int]:
@@ -159,3 +176,46 @@ def get_brain_coverage(db: Session) -> BrainCoverageResponse:
         coverage_percent=coverage_percent,
         domains=domains,
     )
+
+
+def get_brain_recommendations(db: Session) -> BrainRecommendationsResponse:
+    definitions = db.scalars(
+        select(KnowledgeDefinition).order_by(
+            KnowledgeDefinition.domain,
+            KnowledgeDefinition.sub_domain,
+        )
+    ).all()
+
+    populated_slots = {
+        (domain, sub_domain)
+        for domain, sub_domain in db.execute(
+            select(KnowledgeItem.domain, KnowledgeItem.sub_domain).distinct()
+        ).all()
+    }
+
+    recommendations: list[BrainRecommendationRead] = []
+    for definition in definitions:
+        if (definition.domain, definition.sub_domain) in populated_slots:
+            continue
+
+        priority = DOMAIN_PRIORITY.get(definition.domain, "low")
+        recommendations.append(
+            BrainRecommendationRead(
+                domain=definition.domain,
+                sub_domain=definition.sub_domain,
+                name=definition.name,
+                source_of_truth=definition.source_of_truth,
+                reason=RECOMMENDATION_REASON,
+                priority=priority,
+            )
+        )
+
+    recommendations.sort(
+        key=lambda recommendation: (
+            PRIORITY_ORDER[recommendation.priority],
+            recommendation.domain,
+            recommendation.sub_domain,
+        )
+    )
+
+    return BrainRecommendationsResponse(recommendations=recommendations)
