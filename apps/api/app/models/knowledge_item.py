@@ -1,4 +1,6 @@
-from sqlalchemy import Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,4 +22,15 @@ class KnowledgeItem(Base):
         ARRAY(String),
         nullable=False,
         default=lambda: ["founder", "admin", "member"],
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )

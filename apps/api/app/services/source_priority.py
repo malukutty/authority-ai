@@ -63,3 +63,27 @@ def ensure_allowed_roles_column() -> None:
                 "DEFAULT ARRAY['founder','admin','member']::VARCHAR[]"
             )
         )
+
+
+def ensure_timestamp_columns() -> None:
+    inspector = inspect(engine)
+    if "knowledge_items" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("knowledge_items")}
+
+    with engine.begin() as conn:
+        if "created_at" not in columns:
+            conn.execute(
+                text(
+                    "ALTER TABLE knowledge_items "
+                    "ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+                )
+            )
+        if "updated_at" not in columns:
+            conn.execute(
+                text(
+                    "ALTER TABLE knowledge_items "
+                    "ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+                )
+            )

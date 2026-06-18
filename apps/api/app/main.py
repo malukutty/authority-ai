@@ -9,6 +9,7 @@ import app.models  # noqa: F401 — register models with Base.metadata
 from app.schemas.ask import AskRequest, AskResponse, SourceRead
 from app.schemas.brain import (
     BrainCoverageResponse,
+    BrainFreshnessResponse,
     BrainRecommendationsResponse,
     BrainSubDomainRead,
 )
@@ -19,14 +20,15 @@ from app.schemas.knowledge_relationship import (
     KnowledgeRelationshipCreate,
     KnowledgeRelationshipRead,
 )
-from app.schemas.seed import ResetDemoResponse, SeedResponse
+from app.schemas.seed import CleanDemoResponse, ResetDemoResponse, SeedResponse
 from app.services.brain import (
     get_brain_coverage,
+    get_brain_freshness,
     get_brain_recommendations,
     get_brain_structure,
     initialize_brain,
 )
-from app.services.demo import reset_demo
+from app.services.demo import reset_demo, seed_clean_demo, seed_freshness_test
 from app.services.knowledge import (
     create_knowledge_item,
     delete_knowledge_item,
@@ -45,6 +47,7 @@ from app.services.relationship import (
 from app.services.source_priority import (
     ensure_allowed_roles_column,
     ensure_source_priority_column,
+    ensure_timestamp_columns,
 )
 
 
@@ -53,6 +56,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     ensure_source_priority_column()
     ensure_allowed_roles_column()
+    ensure_timestamp_columns()
     sync_seed_allowed_roles()
     initialize_brain()
     yield
@@ -79,6 +83,11 @@ def get_brain_coverage_endpoint(db: Session = Depends(get_db)):
 @app.get("/brain/recommendations", response_model=BrainRecommendationsResponse)
 def get_brain_recommendations_endpoint(db: Session = Depends(get_db)):
     return get_brain_recommendations(db)
+
+
+@app.get("/brain/freshness", response_model=BrainFreshnessResponse)
+def get_brain_freshness_endpoint(db: Session = Depends(get_db)):
+    return get_brain_freshness(db)
 
 
 @app.post("/ingest/notion", response_model=KnowledgeItemRead, status_code=201)
@@ -134,6 +143,16 @@ def seed_knowledge(db: Session = Depends(get_db)):
         relationships_created=relationships_created,
         relationships_skipped=relationships_skipped,
     )
+
+
+@app.post("/seed/freshness-test", response_model=list[KnowledgeItemRead])
+def seed_freshness_test_data(db: Session = Depends(get_db)):
+    return seed_freshness_test(db)
+
+
+@app.post("/seed/clean-demo", response_model=CleanDemoResponse)
+def seed_clean_demo_data(db: Session = Depends(get_db)):
+    return seed_clean_demo(db)
 
 
 @app.delete("/reset-demo", response_model=ResetDemoResponse)

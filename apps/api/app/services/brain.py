@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from sqlalchemy import select
@@ -8,6 +9,8 @@ from app.models.knowledge_item import KnowledgeItem
 from app.schemas.brain import (
     BrainCoverageResponse,
     BrainCoverageSlotRead,
+    BrainFreshnessResponse,
+    BrainFreshnessSlotRead,
     BrainRecommendationRead,
     BrainRecommendationsResponse,
     BrainSubDomainRead,
@@ -85,6 +88,40 @@ DOMAIN_PRIORITY: dict[str, Literal["high", "medium", "low"]] = {
 }
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+
+DOMAIN_FRESHNESS_DAYS: dict[str, int] = {
+    "financial": 7,
+    "pipeline": 14,
+    "engineering": 7,
+    "decisions": 30,
+    "mission": 90,
+}
+
+
+def _pick_highest_priority_item(
+    items: list[KnowledgeItem],
+) -> KnowledgeItem | None:
+    if not items:
+        return None
+
+    return min(items, key=lambda item: (item.source_priority, item.trust_rank))
+
+
+def _freshness_status(
+    item: KnowledgeItem | None, domain: str, now: datetime
+) -> Literal["fresh", "stale", "missing"]:
+    if item is None:
+        return "missing"
+
+    window_days = DOMAIN_FRESHNESS_DAYS.get(domain, 30)
+    updated_at = item.updated_at
+    if updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
+    age = now - updated_at
+    if age <= timedelta(days=window_days):
+        return "fresh"
+
+    return "stale"
 
 
 def seed_brain_definitions(db: Session) -> tuple[int, int]:
@@ -219,3 +256,48 @@ def get_brain_recommendations(db: Session) -> BrainRecommendationsResponse:
     )
 
     return BrainRecommendationsResponse(recommendations=recommendations)
+
+
+def get_brain_freshness(db: Session) -> BrainFreshnessResponse:
+    definitions = db.scalars(
+        select(KnowledgeDefinition).order_by(
+            KnowledgeDefinition.domain,
+            KnowledgeDefinition.sub_domain,
+        )
+    ).all()
+
+    all_items = db.scalars(select(KnowledgeItem)).all()
+    items_by_slot: dict[tuple[str, str], list[KnowledgeItem]] = {}
+    for item in all_items:
+        items_by_slot.setdefault((item.domain, item.sub_domain), []).append(item)
+
+    now = datetime.now(timezone.utc)
+    domains: dict[str, list[BrainFreshnessSlotRead]] = {}
+    fresh_count = 0
+
+    for definition in definitions:
+        slot_items = items_by_slot.get(
+            (definition.domain, definition.sub_domain),
+            [],
+        )
+        best_item = _pick_highest_priority_item(slot_items)
+        status = _freshness_status(best_item, definition.domain, now)
+
+        if status == "fresh":
+            fresh_count += 1
+
+        domains.setdefault(definition.domain, []).append(
+            BrainFreshnessSlotRead(
+                sub_domain=definition.sub_domain,
+                name=definition.name,
+                status=status,
+            )
+        )
+
+    total = len(definitions)
+    brain_health_percent = round(fresh_count / total * 100) if total else 0
+
+    return BrainFreshnessResponse(
+        brain_health_percent=brain_health_percent,
+        domains=domains,
+    )

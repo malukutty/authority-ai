@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -24,3 +26,5 @@ class KnowledgeItemRead(BaseModel):
     source_priority: int
     trust_rank: int
     allowed_roles: list[str]
+    created_at: datetime
+    updated_at: datetime

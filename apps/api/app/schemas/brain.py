@@ -51,3 +51,14 @@ class BrainRecommendationRead(BaseModel):
 
 class BrainRecommendationsResponse(BaseModel):
     recommendations: list[BrainRecommendationRead]
+
+
+class BrainFreshnessSlotRead(BaseModel):
+    sub_domain: str
+    name: str
+    status: Literal["fresh", "stale", "missing"]
+
+
+class BrainFreshnessResponse(BaseModel):
+    brain_health_percent: int
+    domains: dict[str, list[BrainFreshnessSlotRead]]

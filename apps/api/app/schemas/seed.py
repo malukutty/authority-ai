@@ -13,3 +13,10 @@ class ResetDemoResponse(BaseModel):
     items_deleted: int
     items_created: int
     relationships_created: int
+
+
+class CleanDemoResponse(BaseModel):
+    deleted_knowledge_items: int
+    deleted_relationships: int
+    created_knowledge_items: int
+    created_relationships: int
