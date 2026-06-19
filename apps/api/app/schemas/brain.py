@@ -10,6 +10,7 @@ class KnowledgeDefinitionCreate(BaseModel):
     description: str
     source_of_truth: str = Field(..., max_length=128)
     allowed_roles: list[str]
+    importance_score: int = Field(..., ge=1, le=10)
 
 
 class KnowledgeDefinitionRead(BaseModel):
@@ -22,6 +23,8 @@ class KnowledgeDefinitionRead(BaseModel):
     description: str
     source_of_truth: str
     allowed_roles: list[str]
+    importance_score: int
+    importance_score: int
 
 
 class BrainSubDomainRead(BaseModel):
@@ -62,3 +65,18 @@ class BrainFreshnessSlotRead(BaseModel):
 class BrainFreshnessResponse(BaseModel):
     brain_health_percent: int
     domains: dict[str, list[BrainFreshnessSlotRead]]
+
+
+class BrainHealthPriorityRead(BaseModel):
+    domain: str
+    sub_domain: str
+    name: str
+    importance_score: int
+
+
+class BrainHealthResponse(BaseModel):
+    weighted_coverage_score: float
+    weighted_freshness_score: float
+    brain_health_score: float
+    high_priority_missing: list[BrainHealthPriorityRead]
+    high_priority_stale: list[BrainHealthPriorityRead]

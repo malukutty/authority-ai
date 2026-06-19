@@ -30,3 +30,4 @@ class KnowledgeDefinition(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     source_of_truth: Mapped[str] = mapped_column(String(128), nullable=False)
     allowed_roles: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
+    importance_score: Mapped[int] = mapped_column(Integer, nullable=False, default=5)

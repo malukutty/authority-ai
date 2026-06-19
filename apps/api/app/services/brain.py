@@ -11,6 +11,8 @@ from app.schemas.brain import (
     BrainCoverageSlotRead,
     BrainFreshnessResponse,
     BrainFreshnessSlotRead,
+    BrainHealthPriorityRead,
+    BrainHealthResponse,
     BrainRecommendationRead,
     BrainRecommendationsResponse,
     BrainSubDomainRead,
@@ -25,6 +27,7 @@ BRAIN_DEFINITIONS = [
         description="Current monthly recurring revenue.",
         source_of_truth="stripe",
         allowed_roles=["founder", "finance"],
+        importance_score=10,
     ),
     KnowledgeDefinitionCreate(
         domain="financial",
@@ -33,6 +36,7 @@ BRAIN_DEFINITIONS = [
         description="Current cash runway in months.",
         source_of_truth="notion",
         allowed_roles=["founder", "finance"],
+        importance_score=10,
     ),
     KnowledgeDefinitionCreate(
         domain="pipeline",
@@ -41,6 +45,7 @@ BRAIN_DEFINITIONS = [
         description="Most common sales objections and how to handle them.",
         source_of_truth="hubspot",
         allowed_roles=["founder", "sales", "member"],
+        importance_score=9,
     ),
     KnowledgeDefinitionCreate(
         domain="mission",
@@ -49,6 +54,7 @@ BRAIN_DEFINITIONS = [
         description="Target customer segment the company serves.",
         source_of_truth="notion",
         allowed_roles=["founder", "member"],
+        importance_score=6,
     ),
     KnowledgeDefinitionCreate(
         domain="mission",
@@ -57,6 +63,7 @@ BRAIN_DEFINITIONS = [
         description="What the company builds and why it exists.",
         source_of_truth="notion",
         allowed_roles=["founder", "member"],
+        importance_score=5,
     ),
     KnowledgeDefinitionCreate(
         domain="engineering",
@@ -65,6 +72,7 @@ BRAIN_DEFINITIONS = [
         description="Current engineering blockers and delivery risks.",
         source_of_truth="linear",
         allowed_roles=["founder", "engineering"],
+        importance_score=8,
     ),
     KnowledgeDefinitionCreate(
         domain="decisions",
@@ -73,6 +81,7 @@ BRAIN_DEFINITIONS = [
         description="Pricing decisions, plans, and rationale.",
         source_of_truth="notion",
         allowed_roles=["founder", "sales"],
+        importance_score=8,
     ),
 ]
 
@@ -146,6 +155,31 @@ def seed_brain_definitions(db: Session) -> tuple[int, int]:
         db.commit()
 
     return count_created, count_skipped
+
+
+def sync_definition_importance_scores() -> int:
+    from app.db.session import SessionLocal
+
+    updated = 0
+    with SessionLocal() as db:
+        for payload in BRAIN_DEFINITIONS:
+            existing = db.scalar(
+                select(KnowledgeDefinition).where(
+                    KnowledgeDefinition.domain == payload.domain,
+                    KnowledgeDefinition.sub_domain == payload.sub_domain,
+                )
+            )
+            if existing is None:
+                continue
+
+            if existing.importance_score != payload.importance_score:
+                existing.importance_score = payload.importance_score
+                updated += 1
+
+        if updated:
+            db.commit()
+
+    return updated
 
 
 def initialize_brain() -> tuple[int, int]:
@@ -300,4 +334,69 @@ def get_brain_freshness(db: Session) -> BrainFreshnessResponse:
     return BrainFreshnessResponse(
         brain_health_percent=brain_health_percent,
         domains=domains,
+    )
+
+
+def _weighted_score(earned: int, total: int) -> float:
+    if total == 0:
+        return 0.0
+
+    return round(earned / total, 4)
+
+
+def get_brain_health(db: Session) -> BrainHealthResponse:
+    definitions = db.scalars(
+        select(KnowledgeDefinition).order_by(
+            KnowledgeDefinition.domain,
+            KnowledgeDefinition.sub_domain,
+        )
+    ).all()
+
+    all_items = db.scalars(select(KnowledgeItem)).all()
+    items_by_slot: dict[tuple[str, str], list[KnowledgeItem]] = {}
+    for item in all_items:
+        items_by_slot.setdefault((item.domain, item.sub_domain), []).append(item)
+
+    now = datetime.now(timezone.utc)
+    total_importance = sum(definition.importance_score for definition in definitions)
+    populated_importance = 0
+    fresh_importance = 0
+    high_priority_missing: list[BrainHealthPriorityRead] = []
+    high_priority_stale: list[BrainHealthPriorityRead] = []
+
+    for definition in definitions:
+        slot_items = items_by_slot.get(
+            (definition.domain, definition.sub_domain),
+            [],
+        )
+        best_item = _pick_highest_priority_item(slot_items)
+        status = _freshness_status(best_item, definition.domain, now)
+        priority_entry = BrainHealthPriorityRead(
+            domain=definition.domain,
+            sub_domain=definition.sub_domain,
+            name=definition.name,
+            importance_score=definition.importance_score,
+        )
+
+        if status == "missing":
+            high_priority_missing.append(priority_entry)
+            continue
+
+        populated_importance += definition.importance_score
+        if status == "fresh":
+            fresh_importance += definition.importance_score
+        else:
+            high_priority_stale.append(priority_entry)
+
+    high_priority_missing.sort(key=lambda entry: entry.importance_score, reverse=True)
+    high_priority_stale.sort(key=lambda entry: entry.importance_score, reverse=True)
+
+    return BrainHealthResponse(
+        weighted_coverage_score=_weighted_score(
+            populated_importance, total_importance
+        ),
+        weighted_freshness_score=_weighted_score(fresh_importance, total_importance),
+        brain_health_score=_weighted_score(fresh_importance, total_importance),
+        high_priority_missing=high_priority_missing,
+        high_priority_stale=high_priority_stale,
     )

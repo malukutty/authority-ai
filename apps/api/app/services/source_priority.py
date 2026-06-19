@@ -87,3 +87,21 @@ def ensure_timestamp_columns() -> None:
                     "ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
                 )
             )
+
+
+def ensure_importance_score_column() -> None:
+    inspector = inspect(engine)
+    if "knowledge_definitions" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("knowledge_definitions")}
+    if "importance_score" in columns:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE knowledge_definitions "
+                "ADD COLUMN importance_score INTEGER NOT NULL DEFAULT 5"
+            )
+        )

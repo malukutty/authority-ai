@@ -10,6 +10,7 @@ from app.schemas.ask import AskRequest, AskResponse, SourceRead
 from app.schemas.brain import (
     BrainCoverageResponse,
     BrainFreshnessResponse,
+    BrainHealthResponse,
     BrainRecommendationsResponse,
     BrainSubDomainRead,
 )
@@ -24,9 +25,11 @@ from app.schemas.seed import CleanDemoResponse, ResetDemoResponse, SeedResponse
 from app.services.brain import (
     get_brain_coverage,
     get_brain_freshness,
+    get_brain_health,
     get_brain_recommendations,
     get_brain_structure,
     initialize_brain,
+    sync_definition_importance_scores,
 )
 from app.services.demo import reset_demo, seed_clean_demo, seed_freshness_test
 from app.services.knowledge import (
@@ -46,6 +49,7 @@ from app.services.relationship import (
 )
 from app.services.source_priority import (
     ensure_allowed_roles_column,
+    ensure_importance_score_column,
     ensure_source_priority_column,
     ensure_timestamp_columns,
 )
@@ -57,8 +61,10 @@ async def lifespan(app: FastAPI):
     ensure_source_priority_column()
     ensure_allowed_roles_column()
     ensure_timestamp_columns()
+    ensure_importance_score_column()
     sync_seed_allowed_roles()
     initialize_brain()
+    sync_definition_importance_scores()
     yield
 
 
@@ -88,6 +94,11 @@ def get_brain_recommendations_endpoint(db: Session = Depends(get_db)):
 @app.get("/brain/freshness", response_model=BrainFreshnessResponse)
 def get_brain_freshness_endpoint(db: Session = Depends(get_db)):
     return get_brain_freshness(db)
+
+
+@app.get("/brain/health", response_model=BrainHealthResponse)
+def get_brain_health_endpoint(db: Session = Depends(get_db)):
+    return get_brain_health(db)
 
 
 @app.post("/ingest/notion", response_model=KnowledgeItemRead, status_code=201)
