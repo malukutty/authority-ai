@@ -25,3 +25,29 @@ class KnowledgeRelationshipRead(BaseModel):
 class KnowledgeItemRelationshipsResponse(BaseModel):
     knowledge_item: KnowledgeItemRead
     relationships: list[KnowledgeRelationshipRead]
+
+
+class KnowledgeNodeRead(BaseModel):
+    domain: str
+    sub_domain: str
+    name: str
+
+
+class KnowledgeImpactRead(BaseModel):
+    source: KnowledgeNodeRead
+    target: KnowledgeNodeRead
+    relationship_type: str
+
+
+class KnowledgeImpactResponse(BaseModel):
+    impacts: list[KnowledgeImpactRead]
+
+
+class BrainRelationshipRead(BaseModel):
+    source: KnowledgeNodeRead
+    target: KnowledgeNodeRead
+    relationship_type: str
+
+
+class BrainRelationshipsResponse(BaseModel):
+    domains: dict[str, list[BrainRelationshipRead]]

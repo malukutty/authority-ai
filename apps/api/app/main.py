@@ -17,6 +17,8 @@ from app.schemas.brain import (
 from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate, KnowledgeItemRead
 from app.schemas.knowledge_relationship import (
+    BrainRelationshipsResponse,
+    KnowledgeImpactResponse,
     KnowledgeItemRelationshipsResponse,
     KnowledgeRelationshipCreate,
     KnowledgeRelationshipRead,
@@ -44,6 +46,8 @@ from app.services.knowledge import (
 )
 from app.services.relationship import (
     create_knowledge_relationship,
+    get_brain_relationships,
+    get_knowledge_impact,
     get_knowledge_relationships,
     seed_knowledge_relationships,
 )
@@ -99,6 +103,20 @@ def get_brain_freshness_endpoint(db: Session = Depends(get_db)):
 @app.get("/brain/health", response_model=BrainHealthResponse)
 def get_brain_health_endpoint(db: Session = Depends(get_db)):
     return get_brain_health(db)
+
+
+@app.get("/brain/relationships", response_model=BrainRelationshipsResponse)
+def get_brain_relationships_endpoint(db: Session = Depends(get_db)):
+    return get_brain_relationships(db)
+
+
+@app.get("/impact", response_model=KnowledgeImpactResponse)
+def get_impact(
+    domain: str,
+    sub_domain: str,
+    db: Session = Depends(get_db),
+):
+    return get_knowledge_impact(db, domain, sub_domain)
 
 
 @app.post("/ingest/notion", response_model=KnowledgeItemRead, status_code=201)
