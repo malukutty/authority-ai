@@ -8,6 +8,7 @@ from app.db.session import engine, get_db
 import app.models  # noqa: F401 — register models with Base.metadata
 from app.schemas.ask import AskRequest, AskResponse, SourceRead
 from app.schemas.brain import (
+    BrainConflictsResponse,
     BrainCoverageResponse,
     BrainFreshnessResponse,
     BrainHealthResponse,
@@ -23,8 +24,9 @@ from app.schemas.knowledge_relationship import (
     KnowledgeRelationshipCreate,
     KnowledgeRelationshipRead,
 )
-from app.schemas.seed import CleanDemoResponse, ResetDemoResponse, SeedResponse
+from app.schemas.seed import CleanDemoResponse, ConflictTestResponse, ResetDemoResponse, SeedResponse
 from app.services.brain import (
+    get_brain_conflicts,
     get_brain_coverage,
     get_brain_freshness,
     get_brain_health,
@@ -33,7 +35,7 @@ from app.services.brain import (
     initialize_brain,
     sync_definition_importance_scores,
 )
-from app.services.demo import reset_demo, seed_clean_demo, seed_freshness_test
+from app.services.demo import reset_demo, seed_clean_demo, seed_conflict_test, seed_freshness_test
 from app.services.knowledge import (
     create_knowledge_item,
     delete_knowledge_item,
@@ -110,6 +112,11 @@ def get_brain_relationships_endpoint(db: Session = Depends(get_db)):
     return get_brain_relationships(db)
 
 
+@app.get("/brain/conflicts", response_model=BrainConflictsResponse)
+def get_brain_conflicts_endpoint(db: Session = Depends(get_db)):
+    return get_brain_conflicts(db)
+
+
 @app.get("/impact", response_model=KnowledgeImpactResponse)
 def get_impact(
     domain: str,
@@ -177,6 +184,11 @@ def seed_knowledge(db: Session = Depends(get_db)):
 @app.post("/seed/freshness-test", response_model=list[KnowledgeItemRead])
 def seed_freshness_test_data(db: Session = Depends(get_db)):
     return seed_freshness_test(db)
+
+
+@app.post("/seed/conflict-test", response_model=ConflictTestResponse)
+def seed_conflict_test_data(db: Session = Depends(get_db)):
+    return seed_conflict_test(db)
 
 
 @app.post("/seed/clean-demo", response_model=CleanDemoResponse)

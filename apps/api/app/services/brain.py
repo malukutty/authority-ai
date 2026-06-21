@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from app.models.knowledge_definition import KnowledgeDefinition
 from app.models.knowledge_item import KnowledgeItem
 from app.schemas.brain import (
+    BrainConflictRead,
+    BrainConflictsResponse,
     BrainCoverageResponse,
     BrainCoverageSlotRead,
     BrainFreshnessResponse,
@@ -399,4 +401,66 @@ def get_brain_health(db: Session) -> BrainHealthResponse:
         brain_health_score=_weighted_score(fresh_importance, total_importance),
         high_priority_missing=high_priority_missing,
         high_priority_stale=high_priority_stale,
+    )
+
+
+def get_brain_conflicts(db: Session) -> BrainConflictsResponse:
+    definitions = db.scalars(
+        select(KnowledgeDefinition).order_by(
+            KnowledgeDefinition.domain,
+            KnowledgeDefinition.sub_domain,
+        )
+    ).all()
+
+    all_items = db.scalars(select(KnowledgeItem)).all()
+    items_by_slot: dict[tuple[str, str], list[KnowledgeItem]] = {}
+    for item in all_items:
+        items_by_slot.setdefault((item.domain, item.sub_domain), []).append(item)
+
+    conflicts: list[BrainConflictRead] = []
+
+    for definition in definitions:
+        slot_items = items_by_slot.get(
+            (definition.domain, definition.sub_domain),
+            [],
+        )
+        if len(slot_items) < 2:
+            continue
+
+        distinct_values = {item.content for item in slot_items}
+        if len(distinct_values) < 2:
+            continue
+
+        winning_item = _pick_highest_priority_item(slot_items)
+        if winning_item is None:
+            continue
+
+        conflicts.append(
+            BrainConflictRead(
+                domain=definition.domain,
+                sub_domain=definition.sub_domain,
+                conflicting_sources=[
+                    item.source_system
+                    for item in sorted(
+                        slot_items,
+                        key=lambda item: (item.source_priority, item.trust_rank),
+                    )
+                ],
+                conflicting_values=sorted(distinct_values),
+                winning_source=winning_item.source_system,
+            )
+        )
+
+    total_definitions = len(definitions)
+    conflict_count = len(conflicts)
+    consistency_score = (
+        round(1 - conflict_count / total_definitions, 4)
+        if total_definitions
+        else 1.0
+    )
+
+    return BrainConflictsResponse(
+        conflict_count=conflict_count,
+        consistency_score=consistency_score,
+        conflicts=conflicts,
     )

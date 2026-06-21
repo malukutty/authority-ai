@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.knowledge_item import KnowledgeItem
 from app.models.knowledge_relationship import KnowledgeRelationship
-from app.schemas.seed import CleanDemoResponse, ResetDemoResponse
+from app.schemas.seed import CleanDemoResponse, ConflictTestResponse, ResetDemoResponse
 from app.services.knowledge import SEED_ITEMS
 from app.services.source_priority import get_source_priority
 
@@ -66,6 +66,33 @@ FRESHNESS_TEST_ITEMS = [
         "allowed_roles": ["founder", "member"],
     },
 ]
+
+CONFLICT_TEST_ITEMS = [
+    {
+        "domain": "financial",
+        "sub_domain": "mrr",
+        "content": "Current MRR is $25000",
+        "source_system": "stripe",
+        "source_url": "https://stripe.com/example",
+        "source_priority": 1,
+        "trust_rank": 1,
+        "allowed_roles": ["founder", "finance"],
+    },
+    {
+        "domain": "financial",
+        "sub_domain": "mrr",
+        "content": "Current MRR is $30000",
+        "source_system": "notion",
+        "source_url": "https://notion.so/mrr",
+        "source_priority": 5,
+        "trust_rank": 4,
+        "allowed_roles": ["founder", "finance"],
+    },
+]
+
+NOTION_CONFLICT_MRR_CONTENT = "Current MRR is $30000"
+STRIPE_MRR_SPEC = CONFLICT_TEST_ITEMS[0]
+NOTION_MRR_SPEC = CONFLICT_TEST_ITEMS[1]
 
 CLEAN_DEMO_ITEMS = [
     {
@@ -232,6 +259,88 @@ def seed_freshness_test(db: Session) -> list[KnowledgeItem]:
         db.refresh(item)
 
     return items
+
+
+def _apply_mrr_spec(item: KnowledgeItem, spec: dict, now: datetime) -> None:
+    item.content = spec["content"]
+    item.source_url = spec["source_url"]
+    item.source_priority = spec["source_priority"]
+    item.trust_rank = spec["trust_rank"]
+    item.allowed_roles = spec["allowed_roles"]
+    item.updated_at = now
+
+
+def _create_mrr_item(spec: dict, now: datetime) -> KnowledgeItem:
+    return KnowledgeItem(
+        domain=spec["domain"],
+        sub_domain=spec["sub_domain"],
+        content=spec["content"],
+        source_system=spec["source_system"],
+        source_url=spec["source_url"],
+        source_priority=spec["source_priority"],
+        trust_rank=spec["trust_rank"],
+        allowed_roles=spec["allowed_roles"],
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def seed_conflict_test(db: Session) -> ConflictTestResponse:
+    now = datetime.now(timezone.utc)
+    created_or_updated: list[KnowledgeItem] = []
+
+    notion_conflict_items = list(
+        db.scalars(
+            select(KnowledgeItem).where(
+                KnowledgeItem.domain == "financial",
+                KnowledgeItem.sub_domain == "mrr",
+                KnowledgeItem.source_system == "notion",
+                KnowledgeItem.content == NOTION_CONFLICT_MRR_CONTENT,
+            )
+        ).all()
+    )
+    for duplicate in notion_conflict_items[1:]:
+        db.delete(duplicate)
+    if len(notion_conflict_items) > 1:
+        db.flush()
+
+    stripe_item = db.scalar(
+        select(KnowledgeItem).where(
+            KnowledgeItem.domain == "financial",
+            KnowledgeItem.sub_domain == "mrr",
+            KnowledgeItem.source_system == "stripe",
+        )
+    )
+    if stripe_item is None:
+        stripe_item = _create_mrr_item(STRIPE_MRR_SPEC, now)
+        db.add(stripe_item)
+    else:
+        _apply_mrr_spec(stripe_item, STRIPE_MRR_SPEC, now)
+    created_or_updated.append(stripe_item)
+
+    notion_item = (
+        notion_conflict_items[0]
+        if notion_conflict_items
+        else db.scalar(
+            select(KnowledgeItem).where(
+                KnowledgeItem.domain == "financial",
+                KnowledgeItem.sub_domain == "mrr",
+                KnowledgeItem.source_system == "notion",
+            )
+        )
+    )
+    if notion_item is None:
+        notion_item = _create_mrr_item(NOTION_MRR_SPEC, now)
+        db.add(notion_item)
+    else:
+        _apply_mrr_spec(notion_item, NOTION_MRR_SPEC, now)
+    created_or_updated.append(notion_item)
+
+    db.commit()
+    for item in created_or_updated:
+        db.refresh(item)
+
+    return ConflictTestResponse(created_or_updated=created_or_updated)
 
 
 def seed_clean_demo(db: Session) -> CleanDemoResponse:

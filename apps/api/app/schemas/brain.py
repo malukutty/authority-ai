@@ -24,7 +24,6 @@ class KnowledgeDefinitionRead(BaseModel):
     source_of_truth: str
     allowed_roles: list[str]
     importance_score: int
-    importance_score: int
 
 
 class BrainSubDomainRead(BaseModel):
@@ -80,3 +79,17 @@ class BrainHealthResponse(BaseModel):
     brain_health_score: float
     high_priority_missing: list[BrainHealthPriorityRead]
     high_priority_stale: list[BrainHealthPriorityRead]
+
+
+class BrainConflictRead(BaseModel):
+    domain: str
+    sub_domain: str
+    conflicting_sources: list[str]
+    conflicting_values: list[str]
+    winning_source: str
+
+
+class BrainConflictsResponse(BaseModel):
+    conflict_count: int
+    consistency_score: float
+    conflicts: list[BrainConflictRead]

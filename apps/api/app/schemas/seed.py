@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from app.schemas.knowledge_item import KnowledgeItemRead
+
 
 class SeedResponse(BaseModel):
     count_created: int
@@ -20,3 +22,7 @@ class CleanDemoResponse(BaseModel):
     deleted_relationships: int
     created_knowledge_items: int
     created_relationships: int
+
+
+class ConflictTestResponse(BaseModel):
+    created_or_updated: list[KnowledgeItemRead]
