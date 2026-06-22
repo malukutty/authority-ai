@@ -1,7 +1,7 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 class KnowledgeDefinitionCreate(BaseModel):
     domain: str = Field(..., max_length=64)
@@ -93,3 +93,19 @@ class BrainConflictsResponse(BaseModel):
     conflict_count: int
     consistency_score: float
     conflicts: list[BrainConflictRead]
+
+
+class BrainLineageItemRead(BaseModel):
+    domain: str
+    sub_domain: str
+    content: str
+    source_system: str
+    source_url: str
+    created_at: datetime
+    updated_at: datetime
+    trust_rank: int
+    source_priority: int
+
+
+class BrainLineageResponse(BaseModel):
+    domains: dict[str, list[BrainLineageItemRead]]

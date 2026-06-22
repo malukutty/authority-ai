@@ -12,6 +12,7 @@ from app.schemas.brain import (
     BrainCoverageResponse,
     BrainFreshnessResponse,
     BrainHealthResponse,
+    BrainLineageResponse,
     BrainRecommendationsResponse,
     BrainSubDomainRead,
 )
@@ -30,6 +31,7 @@ from app.services.brain import (
     get_brain_coverage,
     get_brain_freshness,
     get_brain_health,
+    get_brain_lineage,
     get_brain_recommendations,
     get_brain_structure,
     initialize_brain,
@@ -115,6 +117,11 @@ def get_brain_relationships_endpoint(db: Session = Depends(get_db)):
 @app.get("/brain/conflicts", response_model=BrainConflictsResponse)
 def get_brain_conflicts_endpoint(db: Session = Depends(get_db)):
     return get_brain_conflicts(db)
+
+
+@app.get("/brain/lineage", response_model=BrainLineageResponse)
+def get_brain_lineage_endpoint(db: Session = Depends(get_db)):
+    return get_brain_lineage(db)
 
 
 @app.get("/impact", response_model=KnowledgeImpactResponse)
@@ -225,6 +232,8 @@ def ask_authority(request: AskRequest, db: Session = Depends(get_db)):
                 source_system=top_item.source_system,
                 source_url=top_item.source_url,
                 trust_rank=top_item.trust_rank,
+                source_priority=top_item.source_priority,
+                updated_at=top_item.updated_at,
             )
         ],
         user_role=request.user_role,

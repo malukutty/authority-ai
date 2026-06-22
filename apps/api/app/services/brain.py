@@ -15,6 +15,8 @@ from app.schemas.brain import (
     BrainFreshnessSlotRead,
     BrainHealthPriorityRead,
     BrainHealthResponse,
+    BrainLineageItemRead,
+    BrainLineageResponse,
     BrainRecommendationRead,
     BrainRecommendationsResponse,
     BrainSubDomainRead,
@@ -464,3 +466,35 @@ def get_brain_conflicts(db: Session) -> BrainConflictsResponse:
         consistency_score=consistency_score,
         conflicts=conflicts,
     )
+
+
+def get_brain_lineage(db: Session) -> BrainLineageResponse:
+    items = db.scalars(
+        select(KnowledgeItem).order_by(
+            KnowledgeItem.domain,
+            KnowledgeItem.sub_domain,
+            KnowledgeItem.source_priority,
+            KnowledgeItem.trust_rank,
+        )
+    ).all()
+
+    domains: dict[str, list[BrainLineageItemRead]] = {}
+    for item in items:
+        domains.setdefault(item.domain, []).append(
+            BrainLineageItemRead(
+                domain=item.domain,
+                sub_domain=item.sub_domain,
+                content=item.content,
+                source_system=item.source_system,
+                source_url=item.source_url,
+                created_at=item.created_at,
+                updated_at=item.updated_at,
+                trust_rank=item.trust_rank,
+                source_priority=item.source_priority,
+            )
+        )
+
+    for domain_items in domains.values():
+        domain_items.sort(key=lambda entry: (entry.source_priority, entry.trust_rank))
+
+    return BrainLineageResponse(domains=domains)
