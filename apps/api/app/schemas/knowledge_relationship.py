@@ -51,3 +51,20 @@ class BrainRelationshipRead(BaseModel):
 
 class BrainRelationshipsResponse(BaseModel):
     domains: dict[str, list[BrainRelationshipRead]]
+
+
+class ChangeImpactAnalyzeRequest(BaseModel):
+    domain: str = Field(..., max_length=64)
+    sub_domain: str = Field(..., max_length=128)
+
+
+class ChangeImpactAffectedRead(BaseModel):
+    domain: str
+    sub_domain: str
+    relationship_type: str
+    importance_score: int
+
+
+class ChangeImpactAnalyzeResponse(BaseModel):
+    impact_score: int
+    affected: list[ChangeImpactAffectedRead]

@@ -8,6 +8,9 @@ from app.models.knowledge_relationship import KnowledgeRelationship
 from app.schemas.knowledge_relationship import (
     BrainRelationshipRead,
     BrainRelationshipsResponse,
+    ChangeImpactAnalyzeRequest,
+    ChangeImpactAnalyzeResponse,
+    ChangeImpactAffectedRead,
     KnowledgeImpactRead,
     KnowledgeImpactResponse,
     KnowledgeNodeRead,
@@ -215,3 +218,67 @@ def get_brain_relationships(db: Session) -> BrainRelationshipsResponse:
         )
 
     return BrainRelationshipsResponse(domains=domains)
+
+
+def _definition_importance_scores(db: Session) -> dict[tuple[str, str], int]:
+    definitions = db.scalars(select(KnowledgeDefinition)).all()
+    return {
+        (definition.domain, definition.sub_domain): definition.importance_score
+        for definition in definitions
+    }
+
+
+def analyze_change_impact(
+    db: Session, domain: str, sub_domain: str
+) -> ChangeImpactAnalyzeResponse:
+    source_item = _pick_highest_priority_item(
+        list(
+            db.scalars(
+                select(KnowledgeItem).where(
+                    KnowledgeItem.domain == domain,
+                    KnowledgeItem.sub_domain == sub_domain,
+                )
+            ).all()
+        )
+    )
+
+    if source_item is None:
+        return ChangeImpactAnalyzeResponse(impact_score=0, affected=[])
+
+    importance_scores = _definition_importance_scores(db)
+    items_by_id = {
+        item.id: item for item in db.scalars(select(KnowledgeItem)).all()
+    }
+
+    relationships = db.scalars(
+        select(KnowledgeRelationship).where(
+            KnowledgeRelationship.source_knowledge_id == source_item.id
+        )
+    ).all()
+
+    affected: list[ChangeImpactAffectedRead] = []
+    for relationship in relationships:
+        target_item = items_by_id.get(relationship.target_knowledge_id)
+        if target_item is None:
+            continue
+
+        importance_score = importance_scores.get(
+            (target_item.domain, target_item.sub_domain),
+            5,
+        )
+        affected.append(
+            ChangeImpactAffectedRead(
+                domain=target_item.domain,
+                sub_domain=target_item.sub_domain,
+                relationship_type=relationship.relationship_type,
+                importance_score=importance_score,
+            )
+        )
+
+    affected.sort(key=lambda entry: entry.importance_score, reverse=True)
+    impact_score = sum(entry.importance_score for entry in affected)
+
+    return ChangeImpactAnalyzeResponse(
+        impact_score=impact_score,
+        affected=affected,
+    )

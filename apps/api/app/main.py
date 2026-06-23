@@ -20,6 +20,8 @@ from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate, KnowledgeItemRead
 from app.schemas.knowledge_relationship import (
     BrainRelationshipsResponse,
+    ChangeImpactAnalyzeRequest,
+    ChangeImpactAnalyzeResponse,
     KnowledgeImpactResponse,
     KnowledgeItemRelationshipsResponse,
     KnowledgeRelationshipCreate,
@@ -49,6 +51,7 @@ from app.services.knowledge import (
     sync_seed_allowed_roles,
 )
 from app.services.relationship import (
+    analyze_change_impact,
     create_knowledge_relationship,
     get_brain_relationships,
     get_knowledge_impact,
@@ -131,6 +134,14 @@ def get_impact(
     db: Session = Depends(get_db),
 ):
     return get_knowledge_impact(db, domain, sub_domain)
+
+
+@app.post("/impact/analyze", response_model=ChangeImpactAnalyzeResponse)
+def analyze_impact(
+    payload: ChangeImpactAnalyzeRequest,
+    db: Session = Depends(get_db),
+):
+    return analyze_change_impact(db, payload.domain, payload.sub_domain)
 
 
 @app.post("/ingest/notion", response_model=KnowledgeItemRead, status_code=201)
