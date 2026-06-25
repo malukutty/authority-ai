@@ -69,7 +69,7 @@ def ingest_notion(db: Session, payload: NotionIngestRequest) -> KnowledgeItem:
     return create_knowledge_item(db, item_payload)
 
 
-def classify_question(question: str) -> tuple[list[str], list[str]]:
+def classify_question(question: str) -> list[tuple[str, str | None]]:
     q = question.lower()
 
     objection_keywords = [
@@ -82,27 +82,25 @@ def classify_question(question: str) -> tuple[list[str], list[str]]:
         "hesitant",
     ]
     if "blocker to buying" in q or any(keyword in q for keyword in objection_keywords):
-        return ["pipeline"], ["objection"]
+        return [("pipeline", "objection")]
 
     if "mrr" in q:
-        return ["financial"], ["mrr"]
+        return [("financial", "mrr")]
     if "arr" in q:
-        return ["financial"], ["arr"]
+        return [("financial", "arr")]
     if "runway" in q:
-        return ["financial"], ["runway"]
+        return [("financial", "runway")]
     if "burn" in q:
-        return ["financial"], ["burn"]
+        return [("financial", "burn")]
     if "cash" in q:
-        return ["financial"], ["cash"]
+        return [("financial", "cash")]
 
     engineering_keywords = ["blocker", "bug", "issue", "sprint", "deploy", "release"]
     if any(keyword in q for keyword in engineering_keywords):
-        return ["engineering"], ["blocker"]
+        return [("engineering", "blocker")]
 
     if "icp" in q or "ideal customer" in q:
-        return ["mission"], ["icp"]
-    if any(keyword in q for keyword in ["product", "mission", "building"]):
-        return ["mission"], ["product"]
+        return [("mission", "icp")]
 
     pricing_keywords = ["pricing", "price", "plan", "package", "charge", "cost"]
     decision_keywords = [
@@ -120,13 +118,50 @@ def classify_question(question: str) -> tuple[list[str], list[str]]:
     has_decision = any(keyword in q for keyword in decision_keywords)
 
     if has_pricing and has_decision:
-        return ["decisions"], ["pricing"]
+        return [("decisions", "pricing")]
     if has_pricing:
-        return ["decisions"], ["pricing"]
+        return [("decisions", "pricing")]
     if has_decision:
-        return ["decisions"], []
+        return [("decisions", None)]
 
-    return [], []
+    if any(
+        phrase in q
+        for phrase in ["description", "company description", "describe the company"]
+    ):
+        return [("mission", "description"), ("mission", "product")]
+
+    if any(
+        phrase in q
+        for phrase in [
+            "what does the company do",
+            "what do we do",
+            "what does this company do",
+            "what is the product",
+        ]
+    ) or "product" in q:
+        return [("mission", "product"), ("mission", "description")]
+
+    if any(phrase in q for phrase in ["stage", "what stage", "company stage"]):
+        return [("company", "stage")]
+
+    if any(
+        phrase in q for phrase in ["employees", "team size", "how many employees"]
+    ):
+        return [("company", "employees")]
+
+    if any(phrase in q for phrase in ["funding", "funded", "funding round"]):
+        return [("company", "funding")]
+
+    if any(phrase in q for phrase in ["company name", "who are we", "name"]):
+        return [("mission", "company")]
+
+    if any(phrase in q for phrase in ["industry", "category", "market"]):
+        return [("mission", "industry"), ("product", "category")]
+
+    if any(phrase in q for phrase in ["website", "url"]):
+        return [("mission", "website")]
+
+    return []
 
 
 SEED_ITEMS = [
@@ -272,33 +307,35 @@ def list_knowledge_items(db: Session) -> list[KnowledgeItem]:
 
 
 def retrieve_knowledge(db: Session, question: str, user_role: str) -> list[KnowledgeItem]:
-    domains, sub_domains = classify_question(question)
+    slots = classify_question(question)
 
     print(f"question: {question}")
-    print(f"classified domains: {domains}")
-    print(f"classified sub_domains: {sub_domains}")
+    print(f"classified slots: {slots}")
     print(f"user_role: {user_role}")
 
-    if not domains:
+    if not slots:
         print("number of items found: 0")
         return []
 
-    if sub_domains:
-        query = select(KnowledgeItem).where(
-            KnowledgeItem.domain.in_(domains),
-            KnowledgeItem.sub_domain.in_(sub_domains),
-        )
-    else:
-        query = select(KnowledgeItem).where(
-            KnowledgeItem.domain.in_(domains),
-        )
+    for domain, sub_domain in slots:
+        if sub_domain is None:
+            query = select(KnowledgeItem).where(KnowledgeItem.domain == domain)
+        else:
+            query = select(KnowledgeItem).where(
+                KnowledgeItem.domain == domain,
+                KnowledgeItem.sub_domain == sub_domain,
+            )
 
-    items = db.scalars(query).all()
-    permitted_items = [
-        item for item in items if user_can_access_item(item, user_role)
-    ]
-    print(f"number of items found: {len(permitted_items)}")
+        items = db.scalars(query).all()
+        permitted_items = [
+            item for item in items if user_can_access_item(item, user_role)
+        ]
+        if permitted_items:
+            print(f"number of items found: {len(permitted_items)}")
+            return sorted(
+                permitted_items,
+                key=lambda item: (item.source_priority, item.trust_rank),
+            )
 
-    return sorted(
-        permitted_items, key=lambda item: (item.source_priority, item.trust_rank)
-    )
+    print("number of items found: 0")
+    return []

@@ -7,6 +7,13 @@ from app.db.base import Base
 from app.db.session import engine, get_db
 import app.models  # noqa: F401 — register models with Base.metadata
 from app.schemas.ask import AskRequest, AskResponse, SourceRead
+from app.schemas.company import (
+    AnalyzeWebsiteRequest,
+    AnalyzeWebsiteResponse,
+    CurrentBrainResponse,
+    GenerateBrainRequest,
+    GenerateBrainResponse,
+)
 from app.schemas.brain import (
     BrainConflictsResponse,
     BrainCoverageResponse,
@@ -38,6 +45,11 @@ from app.services.brain import (
     get_brain_structure,
     initialize_brain,
     sync_definition_importance_scores,
+)
+from app.services.company import (
+    analyze_website,
+    generate_company_brain,
+    get_current_company_brain,
 )
 from app.services.demo import reset_demo, seed_clean_demo, seed_conflict_test, seed_freshness_test
 from app.services.knowledge import (
@@ -85,6 +97,23 @@ app = FastAPI(title="Authority AI API", lifespan=lifespan)
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "authority-ai-api"}
+
+
+@app.post("/company/analyze-website", response_model=AnalyzeWebsiteResponse)
+def analyze_company_website(payload: AnalyzeWebsiteRequest):
+    return analyze_website(payload.website_url)
+
+
+@app.post("/company/generate-brain", response_model=GenerateBrainResponse)
+def generate_company_brain_endpoint(
+    payload: GenerateBrainRequest, db: Session = Depends(get_db)
+):
+    return generate_company_brain(db, payload)
+
+
+@app.get("/company/current-brain", response_model=CurrentBrainResponse)
+def get_company_current_brain():
+    return get_current_company_brain()
 
 
 @app.get("/brain", response_model=dict[str, list[BrainSubDomainRead]])
