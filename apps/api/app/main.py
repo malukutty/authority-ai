@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.base import Base
@@ -51,6 +51,7 @@ from app.services.company import (
     generate_company_brain,
     get_current_company_brain,
 )
+from app.services.website_extractor import WebsiteEmptyError, WebsiteFetchError
 from app.services.demo import reset_demo, seed_clean_demo, seed_conflict_test, seed_freshness_test
 from app.services.knowledge import (
     create_knowledge_item,
@@ -101,7 +102,12 @@ def health_check():
 
 @app.post("/company/analyze-website", response_model=AnalyzeWebsiteResponse)
 def analyze_company_website(payload: AnalyzeWebsiteRequest):
-    return analyze_website(payload.website_url)
+    try:
+        return analyze_website(payload.website_url)
+    except WebsiteFetchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except WebsiteEmptyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/company/generate-brain", response_model=GenerateBrainResponse)

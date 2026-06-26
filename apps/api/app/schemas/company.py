@@ -20,10 +20,20 @@ class CompanySnapshot(BaseModel):
     description: str
 
 
+class ExtractionMetadata(BaseModel):
+    source_url: str
+    canonical_url: str
+    confidence: str
+    extraction_method: str
+    fields_extracted: list[str]
+    public_links: dict[str, str]
+
+
 class AnalyzeWebsiteResponse(BaseModel):
     company_snapshot: CompanySnapshot
     public_knowledge_objects: int
     missing_private_fields: list[str]
+    extraction_metadata: ExtractionMetadata
 
 
 class PrivateKnowledge(BaseModel):

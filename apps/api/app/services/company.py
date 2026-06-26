@@ -8,9 +8,16 @@ from app.schemas.company import (
     AnalyzeWebsiteResponse,
     CompanySnapshot,
     CurrentBrainResponse,
+    ExtractionMetadata,
     GenerateBrainRequest,
     GenerateBrainResponse,
     PrivateKnowledge,
+)
+from app.services.website_extractor import (
+    WebsiteEmptyError,
+    WebsiteFetchError,
+    extract_public_knowledge,
+    normalize_website_url,
 )
 from app.schemas.knowledge_item import KnowledgeItemRead
 
@@ -77,54 +84,20 @@ PRIVATE_KNOWLEDGE_MAPPINGS: list[tuple[str, str, str, str]] = [
 _current_company_brain: dict | None = None
 
 
-def _forgepilot_snapshot(website_url: str) -> CompanySnapshot:
-    return CompanySnapshot(
-        company_name="ForgePilot",
-        industry="Industrial SaaS",
-        product="AI-powered workflow automation for manufacturing teams",
-        icp="Mid-market manufacturers with 100-500 employees",
-        pricing="Custom enterprise pricing starting at $2,500/month",
-        stage="Series A",
-        employees="45",
-        funding="$8M Series A",
-        website=website_url,
-        description=(
-            "ForgePilot helps manufacturing teams automate quality workflows with AI."
-        ),
-    )
-
-
-def _generic_snapshot(website_url: str) -> CompanySnapshot:
-    return CompanySnapshot(
-        company_name="Acme Analytics",
-        industry="B2B SaaS",
-        product="Self-serve analytics platform for startup teams",
-        icp="Seed to Series B SaaS startups with 10-100 employees",
-        pricing="$499/month Pro plan",
-        stage="Seed",
-        employees="12",
-        funding="$2M seed round",
-        website=website_url,
-        description=(
-            "Acme Analytics turns product data into actionable growth insights."
-        ),
-    )
-
-
 def _supplemental_public_entries(snapshot: CompanySnapshot) -> list[tuple[str, str, str]]:
-    is_forgepilot = "forgepilot" in snapshot.website.lower()
-    headquarters = "Detroit, MI" if is_forgepilot else "Austin, TX"
-    founded = "2021" if is_forgepilot else "2020"
-
     return [
         ("mission", "website", snapshot.website),
-        ("company", "headquarters", headquarters),
-        ("company", "founded", founded),
+        ("company", "headquarters", "Unknown"),
+        ("company", "founded", "Unknown"),
         ("product", "category", f"{snapshot.industry} software"),
         ("market", "problem", f"Teams in {snapshot.industry} need better visibility."),
         ("customer", "segment", snapshot.icp),
         ("sales", "motion", f"Go-to-market aligned to {snapshot.stage} stage"),
-        ("team", "culture", f"{snapshot.employees} employees building {snapshot.product}"),
+        (
+            "team",
+            "culture",
+            f"{snapshot.employees} employees building {snapshot.product}",
+        ),
         (
             "vision",
             "mission",
@@ -215,15 +188,34 @@ def _recommended_next_steps(
 
 
 def analyze_website(website_url: str) -> AnalyzeWebsiteResponse:
-    if "forgepilot" in website_url.lower():
-        snapshot = _forgepilot_snapshot(website_url)
-    else:
-        snapshot = _generic_snapshot(website_url)
+    normalized_url = normalize_website_url(website_url)
+    extracted = extract_public_knowledge(normalized_url)
+
+    snapshot = CompanySnapshot(
+        company_name=extracted.company_name,
+        industry=extracted.industry,
+        product=extracted.product,
+        icp=extracted.icp,
+        pricing=extracted.pricing,
+        stage=extracted.stage,
+        employees=extracted.employees,
+        funding=extracted.funding,
+        website=normalized_url,
+        description=extracted.description,
+    )
 
     return AnalyzeWebsiteResponse(
         company_snapshot=snapshot,
         public_knowledge_objects=PUBLIC_KNOWLEDGE_OBJECT_COUNT,
         missing_private_fields=list(MISSING_PRIVATE_FIELDS),
+        extraction_metadata=ExtractionMetadata(
+            source_url=extracted.source_url,
+            canonical_url=extracted.canonical_url,
+            confidence=extracted.confidence,
+            extraction_method="homepage_html",
+            fields_extracted=extracted.fields_extracted,
+            public_links=extracted.public_links,
+        ),
     )
 
 
