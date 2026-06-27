@@ -13,6 +13,8 @@ from app.schemas.company import (
     CurrentBrainResponse,
     GenerateBrainRequest,
     GenerateBrainResponse,
+    PublicKnowledgeRequest,
+    PublicKnowledgeResponse,
 )
 from app.schemas.brain import (
     BrainConflictsResponse,
@@ -50,6 +52,7 @@ from app.services.company import (
     analyze_website,
     generate_company_brain,
     get_current_company_brain,
+    get_public_knowledge,
 )
 from app.services.website_extractor import WebsiteEmptyError, WebsiteFetchError
 from app.services.demo import reset_demo, seed_clean_demo, seed_conflict_test, seed_freshness_test
@@ -104,6 +107,16 @@ def health_check():
 def analyze_company_website(payload: AnalyzeWebsiteRequest):
     try:
         return analyze_website(payload.website_url)
+    except WebsiteFetchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except WebsiteEmptyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/company/public-knowledge", response_model=PublicKnowledgeResponse)
+def get_company_public_knowledge(payload: PublicKnowledgeRequest):
+    try:
+        return get_public_knowledge(payload.website_url)
     except WebsiteFetchError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except WebsiteEmptyError as exc:

@@ -4,6 +4,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.models.knowledge_item import KnowledgeItem
+from app.schemas.authority_object import AuthorityObject
 from app.schemas.company import (
     AnalyzeWebsiteResponse,
     CompanySnapshot,
@@ -12,6 +13,19 @@ from app.schemas.company import (
     GenerateBrainRequest,
     GenerateBrainResponse,
     PrivateKnowledge,
+    PublicKnowledgeResponse,
+)
+from app.schemas.knowledge_item import KnowledgeItemRead
+from app.services.authority_objects import (
+    FOUNDER_INPUT_AUTHORITY,
+    LEGACY_IMPORT_SOURCE_SYSTEMS,
+    PUBLIC_KNOWLEDGE_OBJECT_COUNT,
+    PUBLIC_WEBSITE_AUTHORITY,
+    build_company_brain_authority_objects,
+    build_public_authority_objects,
+    build_supplemental_authority_objects,
+    count_public_authority_objects,
+    knowledge_item_from_authority_object,
 )
 from app.services.website_extractor import (
     WebsiteEmptyError,
@@ -19,7 +33,6 @@ from app.services.website_extractor import (
     extract_public_knowledge,
     normalize_website_url,
 )
-from app.schemas.knowledge_item import KnowledgeItemRead
 
 MISSING_PRIVATE_FIELDS = [
     "current_mrr",
@@ -29,140 +42,43 @@ MISSING_PRIVATE_FIELDS = [
     "founder_dependent_knowledge",
 ]
 
-PUBLIC_KNOWLEDGE_OBJECT_COUNT = 19
-
-WEBSITE_IMPORT = "website_import"
-FOUNDER_INPUT = "founder_input"
-IMPORT_SOURCE_PRIORITY = 10
-IMPORT_TRUST_RANK = 3
-
-PUBLIC_SNAPSHOT_MAPPINGS: list[tuple[str, str, str]] = [
-    ("company_name", "mission", "company"),
-    ("industry", "mission", "industry"),
-    ("product", "mission", "product"),
-    ("icp", "mission", "icp"),
-    ("pricing", "decisions", "pricing"),
-    ("stage", "company", "stage"),
-    ("employees", "company", "employees"),
-    ("funding", "company", "funding"),
-    ("description", "mission", "description"),
-]
-
-PRIVATE_KNOWLEDGE_MAPPINGS: list[tuple[str, str, str, str]] = [
-    (
-        "current_mrr",
-        "financial",
-        "mrr",
-        "Current MRR is {value}",
-    ),
-    (
-        "current_runway",
-        "financial",
-        "runway",
-        "Current runway is {value}",
-    ),
-    (
-        "top_customer_objection",
-        "pipeline",
-        "objection",
-        "{value}",
-    ),
-    (
-        "current_engineering_blocker",
-        "engineering",
-        "blocker",
-        "{value}",
-    ),
-    (
-        "founder_dependent_knowledge",
-        "operations",
-        "founder_dependency",
-        "{value}",
-    ),
-]
-
 _current_company_brain: dict | None = None
 
 
-def _supplemental_public_entries(snapshot: CompanySnapshot) -> list[tuple[str, str, str]]:
-    return [
-        ("mission", "website", snapshot.website),
-        ("company", "headquarters", "Unknown"),
-        ("company", "founded", "Unknown"),
-        ("product", "category", f"{snapshot.industry} software"),
-        ("market", "problem", f"Teams in {snapshot.industry} need better visibility."),
-        ("customer", "segment", snapshot.icp),
-        ("sales", "motion", f"Go-to-market aligned to {snapshot.stage} stage"),
-        (
-            "team",
-            "culture",
-            f"{snapshot.employees} employees building {snapshot.product}",
-        ),
-        (
-            "vision",
-            "mission",
-            f"{snapshot.company_name} exists to improve {snapshot.industry.lower()}.",
-        ),
-        (
-            "competitive",
-            "positioning",
-            f"{snapshot.company_name} differentiates through {snapshot.product.lower()}",
-        ),
-    ]
-
-
-def _public_knowledge_entries(snapshot: CompanySnapshot) -> list[tuple[str, str, str]]:
-    entries: list[tuple[str, str, str]] = []
-
-    for field_name, domain, sub_domain in PUBLIC_SNAPSHOT_MAPPINGS:
-        value = getattr(snapshot, field_name).strip()
-        if value:
-            entries.append((domain, sub_domain, value))
-
-    entries.extend(_supplemental_public_entries(snapshot))
-    return entries[:PUBLIC_KNOWLEDGE_OBJECT_COUNT]
-
-
-def _private_knowledge_entries(
-    private_knowledge: PrivateKnowledge,
-) -> list[tuple[str, str, str]]:
-    entries: list[tuple[str, str, str]] = []
-
-    for field_name, domain, sub_domain, content_template in PRIVATE_KNOWLEDGE_MAPPINGS:
-        raw_value = getattr(private_knowledge, field_name).strip()
-        if not raw_value:
-            continue
-
-        content = content_template.format(value=raw_value)
-        entries.append((domain, sub_domain, content))
-
-    return entries
-
-
-def _create_import_item(
-    db: Session,
-    *,
-    domain: str,
-    sub_domain: str,
-    content: str,
-    source_system: str,
-    source_url: str,
-    now: datetime,
-) -> KnowledgeItem:
-    item = KnowledgeItem(
-        domain=domain,
-        sub_domain=sub_domain,
-        content=content,
-        source_system=source_system,
-        source_url=source_url,
-        source_priority=IMPORT_SOURCE_PRIORITY,
-        trust_rank=IMPORT_TRUST_RANK,
-        allowed_roles=["founder", "admin", "member"],
-        created_at=now,
-        updated_at=now,
+def _extraction_metadata_from_extracted(extracted) -> ExtractionMetadata:
+    return ExtractionMetadata(
+        source_url=extracted.source_url,
+        canonical_url=extracted.canonical_url,
+        confidence=extracted.confidence,
+        extraction_method="homepage_html",
+        fields_extracted=extracted.fields_extracted,
+        public_links=extracted.public_links,
     )
-    db.add(item)
-    return item
+
+
+def _snapshot_from_extracted(extracted, normalized_url: str) -> CompanySnapshot:
+    return CompanySnapshot(
+        company_name=extracted.company_name,
+        industry=extracted.industry,
+        product=extracted.product,
+        icp=extracted.icp,
+        pricing=extracted.pricing,
+        stage=extracted.stage,
+        employees=extracted.employees,
+        funding=extracted.funding,
+        website=normalized_url,
+        description=extracted.description,
+    )
+
+
+def _authority_objects_for_analysis(
+    extracted,
+    snapshot: CompanySnapshot,
+    normalized_url: str,
+) -> list[AuthorityObject]:
+    authority_objects = build_public_authority_objects(extracted, normalized_url)
+    authority_objects.extend(build_supplemental_authority_objects(snapshot))
+    return authority_objects
 
 
 def _recommended_next_steps(
@@ -190,32 +106,31 @@ def _recommended_next_steps(
 def analyze_website(website_url: str) -> AnalyzeWebsiteResponse:
     normalized_url = normalize_website_url(website_url)
     extracted = extract_public_knowledge(normalized_url)
-
-    snapshot = CompanySnapshot(
-        company_name=extracted.company_name,
-        industry=extracted.industry,
-        product=extracted.product,
-        icp=extracted.icp,
-        pricing=extracted.pricing,
-        stage=extracted.stage,
-        employees=extracted.employees,
-        funding=extracted.funding,
-        website=normalized_url,
-        description=extracted.description,
+    snapshot = _snapshot_from_extracted(extracted, normalized_url)
+    authority_objects = _authority_objects_for_analysis(
+        extracted, snapshot, normalized_url
     )
 
     return AnalyzeWebsiteResponse(
         company_snapshot=snapshot,
         public_knowledge_objects=PUBLIC_KNOWLEDGE_OBJECT_COUNT,
         missing_private_fields=list(MISSING_PRIVATE_FIELDS),
-        extraction_metadata=ExtractionMetadata(
-            source_url=extracted.source_url,
-            canonical_url=extracted.canonical_url,
-            confidence=extracted.confidence,
-            extraction_method="homepage_html",
-            fields_extracted=extracted.fields_extracted,
-            public_links=extracted.public_links,
-        ),
+        extraction_metadata=_extraction_metadata_from_extracted(extracted),
+        authority_objects=authority_objects,
+    )
+
+
+def get_public_knowledge(website_url: str) -> PublicKnowledgeResponse:
+    normalized_url = normalize_website_url(website_url)
+    extracted = extract_public_knowledge(normalized_url)
+    authority_objects = build_public_authority_objects(extracted, normalized_url)
+
+    return PublicKnowledgeResponse(
+        website_url=normalized_url,
+        company_name=extracted.company_name,
+        authority_objects_count=len(authority_objects),
+        authority_objects=authority_objects,
+        extraction_metadata=_extraction_metadata_from_extracted(extracted),
     )
 
 
@@ -227,23 +142,24 @@ def generate_company_brain(
     now = datetime.now(timezone.utc)
     snapshot = payload.company_snapshot
     private_knowledge = payload.private_knowledge
-    website_url = snapshot.website
 
+    authority_objects = build_company_brain_authority_objects(
+        snapshot, private_knowledge
+    )
+
+    import_source_systems = (
+        PUBLIC_WEBSITE_AUTHORITY,
+        FOUNDER_INPUT_AUTHORITY,
+        *LEGACY_IMPORT_SOURCE_SYSTEMS,
+    )
     db.execute(
         delete(KnowledgeItem).where(
-            KnowledgeItem.source_system.in_([WEBSITE_IMPORT, FOUNDER_INPUT])
+            KnowledgeItem.source_system.in_(import_source_systems)
         )
     )
     db.flush()
 
-    public_entries = _public_knowledge_entries(snapshot)
-    private_entries = _private_knowledge_entries(private_knowledge)
-    all_entries = [
-        *(entry + (WEBSITE_IMPORT, website_url) for entry in public_entries),
-        *(entry + (FOUNDER_INPUT, "") for entry in private_entries),
-    ]
-
-    slots = {(domain, sub_domain) for domain, sub_domain, _, _, _ in all_entries}
+    slots = {(obj.domain, obj.sub_domain) for obj in authority_objects}
     for domain, sub_domain in slots:
         db.execute(
             delete(KnowledgeItem).where(
@@ -254,27 +170,20 @@ def generate_company_brain(
     db.flush()
 
     created_items: list[KnowledgeItem] = []
-
-    for domain, sub_domain, content, source_system, source_url in all_entries:
-        created_items.append(
-            _create_import_item(
-                db,
-                domain=domain,
-                sub_domain=sub_domain,
-                content=content,
-                source_system=source_system,
-                source_url=source_url,
-                now=now,
-            )
-        )
+    for authority_object in authority_objects:
+        item = knowledge_item_from_authority_object(authority_object, now)
+        db.add(item)
+        created_items.append(item)
 
     db.commit()
     for item in created_items:
         db.refresh(item)
 
+    public_count = count_public_authority_objects(authority_objects)
+    founder_count = sum(
+        1 for obj in authority_objects if obj.authority == FOUNDER_INPUT_AUTHORITY
+    )
     domains_populated = sorted({item.domain for item in created_items})
-    public_count = len(public_entries)
-    founder_count = len(private_entries)
 
     _current_company_brain = {
         "company_name": snapshot.company_name,

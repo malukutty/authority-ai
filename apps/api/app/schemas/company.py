@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
+from app.schemas.authority_object import AuthorityObject
 from app.schemas.knowledge_item import KnowledgeItemRead
-
 
 class AnalyzeWebsiteRequest(BaseModel):
     website_url: str = Field(..., max_length=2048)
@@ -33,6 +33,19 @@ class AnalyzeWebsiteResponse(BaseModel):
     company_snapshot: CompanySnapshot
     public_knowledge_objects: int
     missing_private_fields: list[str]
+    extraction_metadata: ExtractionMetadata
+    authority_objects: list[AuthorityObject]
+
+
+class PublicKnowledgeRequest(BaseModel):
+    website_url: str = Field(..., max_length=2048)
+
+
+class PublicKnowledgeResponse(BaseModel):
+    website_url: str
+    company_name: str
+    authority_objects_count: int
+    authority_objects: list[AuthorityObject]
     extraction_metadata: ExtractionMetadata
 
 
