@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.schemas.authority_object import AuthorityObject
@@ -76,3 +79,37 @@ class CurrentBrainResponse(BaseModel):
     domains_populated: list[str]
     knowledge_count: int
     recommended_next_steps: list[str]
+
+
+class RefreshCompanyRequest(BaseModel):
+    website_url: str = Field(..., max_length=2048)
+
+
+class RefreshSummaryRead(BaseModel):
+    new: int
+    updated: int
+    removed: int
+    unchanged: int
+
+
+class RefreshChangeRead(BaseModel):
+    type: Literal["new", "updated", "removed", "unchanged"]
+    domain: str
+    sub_domain: str
+    before: str | None = None
+    after: str | None = None
+
+
+class CompanyRefreshResponse(BaseModel):
+    company: str
+    summary: RefreshSummaryRead
+    changes: list[RefreshChangeRead]
+
+
+class RefreshHistoryEntry(BaseModel):
+    time: datetime
+    summary: RefreshSummaryRead
+
+
+class RefreshHistoryResponse(BaseModel):
+    refreshes: list[RefreshHistoryEntry]

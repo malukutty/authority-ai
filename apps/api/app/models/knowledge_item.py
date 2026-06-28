@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,3 +34,4 @@ class KnowledgeItem(Base):
         onupdate=func.now(),
         nullable=False,
     )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

@@ -328,7 +328,9 @@ def retrieve_knowledge(db: Session, question: str, user_role: str) -> list[Knowl
 
         items = db.scalars(query).all()
         permitted_items = [
-            item for item in items if user_can_access_item(item, user_role)
+            item
+            for item in items
+            if item.is_active and user_can_access_item(item, user_role)
         ]
         if permitted_items:
             print(f"number of items found: {len(permitted_items)}")

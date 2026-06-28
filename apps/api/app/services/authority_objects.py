@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from typing import Literal, TypedDict
+
 from app.models.knowledge_item import KnowledgeItem
 from app.schemas.authority_object import AuthorityObject
 from app.schemas.company import CompanySnapshot, PrivateKnowledge
@@ -49,6 +51,14 @@ PRIVATE_FIELD_MAPPINGS: list[tuple[str, str, str, str]] = [
 ]
 
 LEGACY_IMPORT_SOURCE_SYSTEMS = ("website_import", "founder_input")
+PUBLIC_SOURCE_SYSTEMS = (PUBLIC_WEBSITE_AUTHORITY, "website_import")
+
+
+class AuthorityObjectDiff(TypedDict):
+    new: list[AuthorityObject]
+    updated: list[tuple[AuthorityObject, AuthorityObject]]
+    removed: list[AuthorityObject]
+    unchanged: list[AuthorityObject]
 
 
 def _authority_object_id(domain: str, sub_domain: str) -> str:
@@ -168,6 +178,56 @@ def build_public_authority_objects(
             objects.append(obj)
 
     return objects
+
+
+def compare_authority_objects(
+    old_authority_objects: list[AuthorityObject],
+    new_authority_objects: list[AuthorityObject],
+) -> AuthorityObjectDiff:
+    old_map = {
+        (obj.domain, obj.sub_domain): obj for obj in old_authority_objects
+    }
+    new_map = {
+        (obj.domain, obj.sub_domain): obj for obj in new_authority_objects
+    }
+
+    diff: AuthorityObjectDiff = {
+        "new": [],
+        "updated": [],
+        "removed": [],
+        "unchanged": [],
+    }
+
+    for key, new_obj in new_map.items():
+        old_obj = old_map.get(key)
+        if old_obj is None:
+            diff["new"].append(new_obj)
+        elif old_obj.value == new_obj.value:
+            diff["unchanged"].append(new_obj)
+        else:
+            diff["updated"].append((old_obj, new_obj))
+
+    for key, old_obj in old_map.items():
+        if key not in new_map:
+            diff["removed"].append(old_obj)
+
+    return diff
+
+
+def authority_object_from_knowledge_item(item: KnowledgeItem) -> AuthorityObject:
+    return AuthorityObject(
+        id=_authority_object_id(item.domain, item.sub_domain),
+        domain=item.domain,
+        sub_domain=item.sub_domain,
+        value=item.content,
+        source_type="stored_knowledge_item",
+        source_url=item.source_url,
+        authority=item.source_system,
+        confidence="medium",
+        extraction_method=EXTRACTION_METHOD_HOMEPAGE,
+        last_extracted_at=item.updated_at,
+        metadata={"is_active": item.is_active},
+    )
 
 
 def build_snapshot_authority_objects(snapshot: CompanySnapshot) -> list[AuthorityObject]:
@@ -317,4 +377,5 @@ def knowledge_item_from_authority_object(
         allowed_roles=["founder", "admin", "member"],
         created_at=now,
         updated_at=now,
+        is_active=True,
     )

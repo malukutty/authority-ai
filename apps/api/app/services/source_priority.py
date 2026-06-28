@@ -105,3 +105,21 @@ def ensure_importance_score_column() -> None:
                 "ADD COLUMN importance_score INTEGER NOT NULL DEFAULT 5"
             )
         )
+
+
+def ensure_is_active_column() -> None:
+    inspector = inspect(engine)
+    if "knowledge_items" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("knowledge_items")}
+    if "is_active" in columns:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE knowledge_items "
+                "ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE"
+            )
+        )

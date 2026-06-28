@@ -10,11 +10,14 @@ from app.schemas.ask import AskRequest, AskResponse, SourceRead
 from app.schemas.company import (
     AnalyzeWebsiteRequest,
     AnalyzeWebsiteResponse,
+    CompanyRefreshResponse,
     CurrentBrainResponse,
     GenerateBrainRequest,
     GenerateBrainResponse,
     PublicKnowledgeRequest,
     PublicKnowledgeResponse,
+    RefreshCompanyRequest,
+    RefreshHistoryResponse,
 )
 from app.schemas.brain import (
     BrainConflictsResponse,
@@ -54,6 +57,7 @@ from app.services.company import (
     get_current_company_brain,
     get_public_knowledge,
 )
+from app.services.company_refresh import get_refresh_history, refresh_company_brain
 from app.services.website_extractor import WebsiteEmptyError, WebsiteFetchError
 from app.services.demo import reset_demo, seed_clean_demo, seed_conflict_test, seed_freshness_test
 from app.services.knowledge import (
@@ -77,6 +81,7 @@ from app.services.relationship import (
 from app.services.source_priority import (
     ensure_allowed_roles_column,
     ensure_importance_score_column,
+    ensure_is_active_column,
     ensure_source_priority_column,
     ensure_timestamp_columns,
 )
@@ -89,6 +94,7 @@ async def lifespan(app: FastAPI):
     ensure_allowed_roles_column()
     ensure_timestamp_columns()
     ensure_importance_score_column()
+    ensure_is_active_column()
     sync_seed_allowed_roles()
     initialize_brain()
     sync_definition_importance_scores()
@@ -133,6 +139,23 @@ def generate_company_brain_endpoint(
 @app.get("/company/current-brain", response_model=CurrentBrainResponse)
 def get_company_current_brain():
     return get_current_company_brain()
+
+
+@app.post("/company/refresh", response_model=CompanyRefreshResponse)
+def refresh_company_brain_endpoint(
+    payload: RefreshCompanyRequest, db: Session = Depends(get_db)
+):
+    try:
+        return refresh_company_brain(db, payload.website_url)
+    except WebsiteFetchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except WebsiteEmptyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/company/changes", response_model=RefreshHistoryResponse)
+def get_company_changes():
+    return get_refresh_history()
 
 
 @app.get("/brain", response_model=dict[str, list[BrainSubDomainRead]])
