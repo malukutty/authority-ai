@@ -27,6 +27,7 @@ from app.services.authority_objects import (
     count_public_authority_objects,
     knowledge_item_from_authority_object,
 )
+from app.services.authority_score import build_authority_layer_summary
 from app.services.website_extractor import (
     WebsiteEmptyError,
     WebsiteFetchError,
@@ -117,6 +118,7 @@ def analyze_website(website_url: str) -> AnalyzeWebsiteResponse:
         missing_private_fields=list(MISSING_PRIVATE_FIELDS),
         extraction_metadata=_extraction_metadata_from_extracted(extracted),
         authority_objects=authority_objects,
+        authority_layer_summary=build_authority_layer_summary(authority_objects),
     )
 
 
@@ -131,6 +133,7 @@ def get_public_knowledge(website_url: str) -> PublicKnowledgeResponse:
         authority_objects_count=len(authority_objects),
         authority_objects=authority_objects,
         extraction_metadata=_extraction_metadata_from_extracted(extracted),
+        authority_layer_summary=build_authority_layer_summary(authority_objects),
     )
 
 

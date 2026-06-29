@@ -6,6 +6,22 @@ from pydantic import BaseModel, Field
 from app.schemas.authority_object import AuthorityObject
 from app.schemas.knowledge_item import KnowledgeItemRead
 
+
+class WeakestAuthorityObjectRead(BaseModel):
+    domain: str
+    sub_domain: str
+    value: str
+    authority_score: int
+    reason: str
+
+
+class AuthorityLayerSummary(BaseModel):
+    average_authority_score: float
+    high_authority_objects: int
+    medium_authority_objects: int
+    low_authority_objects: int
+    weakest_objects: list[WeakestAuthorityObjectRead]
+
 class AnalyzeWebsiteRequest(BaseModel):
     website_url: str = Field(..., max_length=2048)
 
@@ -38,6 +54,7 @@ class AnalyzeWebsiteResponse(BaseModel):
     missing_private_fields: list[str]
     extraction_metadata: ExtractionMetadata
     authority_objects: list[AuthorityObject]
+    authority_layer_summary: AuthorityLayerSummary
 
 
 class PublicKnowledgeRequest(BaseModel):
@@ -50,6 +67,7 @@ class PublicKnowledgeResponse(BaseModel):
     authority_objects_count: int
     authority_objects: list[AuthorityObject]
     extraction_metadata: ExtractionMetadata
+    authority_layer_summary: AuthorityLayerSummary
 
 
 class PrivateKnowledge(BaseModel):
@@ -98,6 +116,8 @@ class RefreshChangeRead(BaseModel):
     sub_domain: str
     before: str | None = None
     after: str | None = None
+    authority_score_before: int | None = None
+    authority_score_after: int | None = None
 
 
 class CompanyRefreshResponse(BaseModel):

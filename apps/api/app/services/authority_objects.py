@@ -5,6 +5,7 @@ from typing import Literal, TypedDict
 from app.models.knowledge_item import KnowledgeItem
 from app.schemas.authority_object import AuthorityObject
 from app.schemas.company import CompanySnapshot, PrivateKnowledge
+from app.services.authority_score import attach_authority_score
 from app.services.website_extractor import ExtractedWebsiteData
 
 PUBLIC_WEBSITE_AUTHORITY = "public_website"
@@ -96,18 +97,20 @@ def _make_authority_object(
     if not value.strip():
         return None
 
-    return AuthorityObject(
-        id=_authority_object_id(domain, sub_domain),
-        domain=domain,
-        sub_domain=sub_domain,
-        value=value.strip(),
-        source_type=source_type,
-        source_url=source_url,
-        authority=authority,
-        confidence=confidence,
-        extraction_method=extraction_method,
-        last_extracted_at=last_extracted_at,
-        metadata=metadata or {},
+    return attach_authority_score(
+        AuthorityObject(
+            id=_authority_object_id(domain, sub_domain),
+            domain=domain,
+            sub_domain=sub_domain,
+            value=value.strip(),
+            source_type=source_type,
+            source_url=source_url,
+            authority=authority,
+            confidence=confidence,
+            extraction_method=extraction_method,
+            last_extracted_at=last_extracted_at,
+            metadata=metadata or {},
+        )
     )
 
 
@@ -215,18 +218,20 @@ def compare_authority_objects(
 
 
 def authority_object_from_knowledge_item(item: KnowledgeItem) -> AuthorityObject:
-    return AuthorityObject(
-        id=_authority_object_id(item.domain, item.sub_domain),
-        domain=item.domain,
-        sub_domain=item.sub_domain,
-        value=item.content,
-        source_type="stored_knowledge_item",
-        source_url=item.source_url,
-        authority=item.source_system,
-        confidence="medium",
-        extraction_method=EXTRACTION_METHOD_HOMEPAGE,
-        last_extracted_at=item.updated_at,
-        metadata={"is_active": item.is_active},
+    return attach_authority_score(
+        AuthorityObject(
+            id=_authority_object_id(item.domain, item.sub_domain),
+            domain=item.domain,
+            sub_domain=item.sub_domain,
+            value=item.content,
+            source_type="stored_knowledge_item",
+            source_url=item.source_url,
+            authority=item.source_system,
+            confidence="medium",
+            extraction_method=EXTRACTION_METHOD_HOMEPAGE,
+            last_extracted_at=item.updated_at,
+            metadata={"is_active": item.is_active},
+        )
     )
 
 

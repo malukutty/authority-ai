@@ -65,6 +65,7 @@ def _change_records_from_diff(diff: AuthorityObjectDiff) -> list[RefreshChangeRe
                 sub_domain=obj.sub_domain,
                 before=None,
                 after=obj.value,
+                authority_score_after=obj.authority_score,
             )
         )
 
@@ -76,6 +77,8 @@ def _change_records_from_diff(diff: AuthorityObjectDiff) -> list[RefreshChangeRe
                 sub_domain=new_obj.sub_domain,
                 before=old_obj.value,
                 after=new_obj.value,
+                authority_score_before=None,
+                authority_score_after=new_obj.authority_score,
             )
         )
 
