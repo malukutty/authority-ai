@@ -62,3 +62,36 @@ class DecisionSimulationResponse(BaseModel):
     recommended_checks: list[str]
     authority_used: list[AuthorityUsedRead]
     decision_readiness: DecisionReadinessRead
+
+
+class RecommendationSourceObjectRead(BaseModel):
+    domain: str
+    sub_domain: str
+    current_value: str
+    source_system: str
+    authority_score: int
+
+
+DecisionRecommendationPriority = Literal["high", "medium", "low"]
+
+
+class DecisionRecommendationRead(BaseModel):
+    priority: DecisionRecommendationPriority
+    title: str
+    reason: str
+    impact: str
+    affected_decisions: list[str]
+    recommended_action: str
+    source_objects: list[RecommendationSourceObjectRead] = Field(default_factory=list)
+
+
+class DecisionRecommendationsSummaryRead(BaseModel):
+    high: int
+    medium: int
+    low: int
+    total: int
+
+
+class DecisionRecommendationsResponse(BaseModel):
+    recommendations: list[DecisionRecommendationRead]
+    summary: DecisionRecommendationsSummaryRead

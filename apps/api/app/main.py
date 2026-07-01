@@ -28,7 +28,11 @@ from app.schemas.brain import (
     BrainRecommendationsResponse,
     BrainSubDomainRead,
 )
-from app.schemas.decision import DecisionChangeRequest, DecisionSimulationResponse
+from app.schemas.decision import (
+    DecisionChangeRequest,
+    DecisionRecommendationsResponse,
+    DecisionSimulationResponse,
+)
 from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate, KnowledgeItemRead
 from app.schemas.knowledge_relationship import (
@@ -60,6 +64,7 @@ from app.services.company import (
 )
 from app.services.company_refresh import get_refresh_history, refresh_company_brain
 from app.services.website_extractor import WebsiteEmptyError, WebsiteFetchError
+from app.services.decision_recommendations import generate_decision_recommendations
 from app.services.decision_simulation import simulate_decision_change
 from app.services.demo import reset_demo, seed_clean_demo, seed_conflict_test, seed_freshness_test
 from app.services.knowledge import (
@@ -223,6 +228,11 @@ def simulate_decision(
     db: Session = Depends(get_db),
 ):
     return simulate_decision_change(db, payload.change)
+
+
+@app.get("/decision/recommendations", response_model=DecisionRecommendationsResponse)
+def get_decision_recommendations(db: Session = Depends(get_db)):
+    return generate_decision_recommendations(db)
 
 
 @app.post("/ingest/notion", response_model=KnowledgeItemRead, status_code=201)
