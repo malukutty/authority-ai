@@ -33,6 +33,7 @@ from app.schemas.decision import (
     DecisionRecommendationsResponse,
     DecisionSimulationResponse,
 )
+from app.schemas.integrations import NotionImportResponse
 from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate, KnowledgeItemRead
 from app.schemas.knowledge_relationship import (
@@ -77,6 +78,7 @@ from app.services.knowledge import (
     seed_knowledge_items,
     sync_seed_allowed_roles,
 )
+from app.services.notion_import import import_demo_notion_workspace
 from app.services.relationship import (
     analyze_change_impact,
     create_knowledge_relationship,
@@ -243,6 +245,11 @@ def ingest_notion_content(payload: NotionIngestRequest, db: Session = Depends(ge
 @app.post("/ingest/stripe", response_model=KnowledgeItemRead, status_code=201)
 def ingest_stripe_content(payload: StripeIngestRequest, db: Session = Depends(get_db)):
     return ingest_stripe(db, payload)
+
+
+@app.post("/integrations/notion/import", response_model=NotionImportResponse)
+def import_notion_workspace(db: Session = Depends(get_db)):
+    return import_demo_notion_workspace(db)
 
 
 @app.post("/knowledge", response_model=KnowledgeItemRead, status_code=201)

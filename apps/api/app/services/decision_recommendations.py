@@ -281,7 +281,7 @@ def _missing_recommendation(slot: Slot) -> _DraftRecommendation:
         dedupe_key=("missing", *slot),
         priority=_slot_priority(slot),
         title=f"Add {label.lower()} knowledge",
-        reason=f"{label} knowledge is missing from the Company Brain.",
+        reason=f"{label} business knowledge is missing from your company context.",
         impact=_slot_priority(slot).title(),
         affected_decisions=_affected_decisions(slot),
         recommended_action=f"Add {label.lower()} knowledge or connect its source of truth.",
@@ -372,14 +372,16 @@ def _low_authority_recommendation(
     return _DraftRecommendation(
         dedupe_key=("low_authority", *slot),
         priority=priority,
-        title=f"Improve {label.lower()} knowledge authority",
+        title=f"Strengthen {label} Decision Confidence",
         reason=(
-            f"{label} knowledge has low inferred authority and weakens decision readiness."
+            f"{label} company knowledge has low decision confidence and weakens "
+            "your ability to evaluate related business decisions."
         ),
         impact=priority.title(),
         affected_decisions=affected,
         recommended_action=(
-            f"Connect a stronger source of truth for {label.lower()} knowledge."
+            f"Connect a stronger source of truth for {label.lower()} so future "
+            "decisions start from better company context."
         ),
         source_objects=[_source_object(item)],
         domain_importance=_slot_importance(slot),
@@ -467,11 +469,13 @@ def _evaluate_public_source_links(
         _DraftRecommendation(
             dedupe_key=("public_source_links",),
             priority="low",
-            title="Connect public source links",
-            reason="Some authoritative public source links are missing from the Company Brain.",
+            title="Strengthen public company context",
+            reason="Some public company information is missing from your business knowledge.",
             impact="Low",
             affected_decisions=["Pricing", "Product", "Positioning"],
-            recommended_action="Refresh the public website or add missing public source links.",
+            recommended_action=(
+                "Refresh your public website knowledge or add missing company context."
+            ),
             source_objects=[
                 RecommendationSourceObjectRead(
                     domain=slot[0],
@@ -529,15 +533,17 @@ def _evaluate_pricing_relationships(
         _DraftRecommendation(
             dedupe_key=("missing_relationships", "decisions", "pricing"),
             priority="medium",
-            title="Add pricing decision relationships",
+            title="Strengthen Pricing Decision Coverage",
             reason=(
-                "Pricing exists, but Authority AI cannot fully trace its "
-                "downstream business impact."
+                "Authority AI understands your pricing strategy, but cannot yet "
+                "evaluate its complete downstream impact across your business."
             ),
             impact="Medium",
-            affected_decisions=["Pricing", "MRR", "Sales"],
+            affected_decisions=["Pricing", "Revenue", "Sales", "Customer Strategy"],
             recommended_action=(
-                "Connect pricing to MRR, customer objections, and ICP."
+                "Connect pricing knowledge to revenue, customer objections, and your "
+                "ideal customer profile so future pricing decisions can be evaluated "
+                "more accurately."
             ),
             source_objects=[_source_object(pricing_item)],
             domain_importance=_slot_importance(("decisions", "pricing")),

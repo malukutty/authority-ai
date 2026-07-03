@@ -1,0 +1,53 @@
+{
+  "workspace_name": "Authority AI Demo Workspace",
+  "pages": [
+    {
+      "title": "Pricing Strategy",
+      "content": "Authority AI uses tiered pricing: Starter at $99/month for early-stage teams, Growth at $249/month for scaling startups, and Enterprise with custom pricing for larger organizations. Annual plans receive a 15% discount.",
+      "last_edited_time": "2026-06-28T09:15:00Z",
+      "source_url": "https://notion.so/authority-ai/pricing-strategy"
+    },
+    {
+      "title": "Current Runway",
+      "content": "Current runway is 14 months based on $180k monthly burn and $2.5M cash on hand. Finance reviewed this on June 20, 2026.",
+      "last_edited_time": "2026-06-20T14:30:00Z",
+      "source_url": "https://notion.so/authority-ai/current-runway"
+    },
+    {
+      "title": "Hiring Plan",
+      "content": "Q3 hiring plan: 1 senior backend engineer, 1 solutions engineer, and 1 customer success manager. Headcount budget approved through September.",
+      "last_edited_time": "2026-06-25T11:00:00Z",
+      "source_url": "https://notion.so/authority-ai/hiring-plan"
+    },
+    {
+      "title": "Engineering Blockers",
+      "content": "Current engineering blocker is completing the Notion integration and unifying the refresh engine before adding OAuth connectors.",
+      "last_edited_time": "2026-06-27T16:45:00Z",
+      "source_url": "https://notion.so/authority-ai/engineering-blockers"
+    },
+    {
+      "title": "Customer Feedback",
+      "content": "Most common customer objection is concern about onboarding time and whether the Company Brain can stay current without manual updates.",
+      "last_edited_time": "2026-06-26T10:20:00Z",
+      "source_url": "https://notion.so/authority-ai/customer-feedback"
+    },
+    {
+      "title": "ICP",
+      "content": "Ideal customer profile is seed to Series A B2B SaaS founders with 5-50 employees who need a schema-first company brain for decision infrastructure.",
+      "last_edited_time": "2026-06-24T13:10:00Z",
+      "source_url": "https://notion.so/authority-ai/icp"
+    },
+    {
+      "title": "Product Roadmap",
+      "content": "Q3 roadmap priorities: Notion integration, decision recommendations, Slack connector, and authority conflict resolution. Q4 focus is OAuth connectors and refresh automation.",
+      "last_edited_time": "2026-06-29T08:00:00Z",
+      "source_url": "https://notion.so/authority-ai/product-roadmap"
+    },
+    {
+      "title": "Fundraising Notes",
+      "content": "Fundraising target is $4M seed extension at a $25M cap. Active conversations with 3 lead investors. Target close in August 2026.",
+      "last_edited_time": "2026-06-22T17:00:00Z",
+      "source_url": "https://notion.so/authority-ai/fundraising-notes"
+    }
+  ]
+}
