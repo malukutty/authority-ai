@@ -19,6 +19,7 @@ from app.schemas.company import (
     RefreshCompanyRequest,
     RefreshHistoryResponse,
 )
+from app.schemas.authority_resolution import CurrentTruthRead
 from app.schemas.brain import (
     BrainConflictsResponse,
     BrainCoverageResponse,
@@ -46,6 +47,7 @@ from app.schemas.knowledge_relationship import (
     KnowledgeRelationshipRead,
 )
 from app.schemas.seed import CleanDemoResponse, ConflictTestResponse, ResetDemoResponse, SeedResponse
+from app.services.authority_resolution import resolve_current_truth
 from app.services.brain import (
     get_brain_conflicts,
     get_brain_coverage,
@@ -235,6 +237,11 @@ def simulate_decision(
 @app.get("/decision/recommendations", response_model=DecisionRecommendationsResponse)
 def get_decision_recommendations(db: Session = Depends(get_db)):
     return generate_decision_recommendations(db)
+
+
+@app.get("/authority/current-truth", response_model=list[CurrentTruthRead])
+def get_authority_current_truth(db: Session = Depends(get_db)):
+    return resolve_current_truth(db)
 
 
 @app.post("/ingest/notion", response_model=KnowledgeItemRead, status_code=201)
