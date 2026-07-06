@@ -34,6 +34,7 @@ from app.schemas.decision import (
     DecisionRecommendationsResponse,
     DecisionSimulationResponse,
 )
+from app.schemas.founder_briefing import FounderBriefingResponse
 from app.schemas.integrations import NotionImportResponse
 from app.schemas.ingest import NotionIngestRequest, StripeIngestRequest
 from app.schemas.knowledge_item import KnowledgeItemCreate, KnowledgeItemRead
@@ -80,6 +81,7 @@ from app.services.knowledge import (
     seed_knowledge_items,
     sync_seed_allowed_roles,
 )
+from app.services.founder_briefing import generate_founder_briefing
 from app.services.notion_import import import_demo_notion_workspace
 from app.services.relationship import (
     analyze_change_impact,
@@ -150,6 +152,11 @@ def generate_company_brain_endpoint(
 @app.get("/company/current-brain", response_model=CurrentBrainResponse)
 def get_company_current_brain():
     return get_current_company_brain()
+
+
+@app.get("/company-brain/briefing", response_model=FounderBriefingResponse)
+def get_founder_briefing(db: Session = Depends(get_db)):
+    return generate_founder_briefing(db)
 
 
 @app.post("/company/refresh", response_model=CompanyRefreshResponse)
