@@ -1,5 +1,5 @@
 /**
- * The founder shown on the Repeat landing page. Fill these in before merging to main.
+ * The founder shown on the Repeat landing page.
  *
  * Anything left empty is hidden in production (no "[YOUR NAME]" ever ships);
  * in local development a visible placeholder shows where it goes.
@@ -8,11 +8,12 @@
  * calendarUrl: a booking link (Cal.com, Calendly, Google Calendar appointment page).
  */
 export const FOUNDER = {
-  name: "",
-  /** One line, e.g. "Former Head of Revenue Operations at …" */
-  background: "",
+  name: "Bhavia Velayudhan",
+  title: "Founder & CEO, Authority AI",
+  /** One line shown after the title. */
+  background: "Making business execution repeatable.",
   photo: "",
-  calendarUrl: "",
+  calendarUrl: "https://calendar.app.google/UAcpfcVr53ty1tFs7",
 };
 
 export const SHOW_PLACEHOLDERS = process.env.NODE_ENV !== "production";

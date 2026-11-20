@@ -42,7 +42,8 @@ function Signature() {
       <div>
         <p className="display text-[1.375rem]">{name}</p>
         <p className="mt-0.5 text-sm text-muted">
-          Founder, Authority AI{background ? ` · ${background}` : ""}
+          {FOUNDER.title || "Founder, Authority AI"}
+          {background ? ` · ${background}` : ""}
         </p>
       </div>
     </div>
