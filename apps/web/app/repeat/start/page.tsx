@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { IntakeFlow } from "@/components/Intake";
+import { QuickStart } from "@/components/QuickStart";
 
-export const metadata: Metadata = { title: "Analyze my sales motion", robots: { index: false } };
+export const metadata: Metadata = { title: "Analyze my revenue motion", robots: { index: false } };
 
 export default function Start() {
-  return <IntakeFlow />;
+  return <QuickStart />;
 }

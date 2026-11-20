@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { countUsage, hashIp } from "./store";
+import { countUsage, hashIp, type UsageKind } from "./store";
 
 export function clientIp(req: NextRequest) {
   const fwd = req.headers.get("x-forwarded-for");
@@ -37,10 +37,14 @@ const num = (v: string | undefined, d: number) => {
   return Number.isFinite(n) && n > 0 ? n : d;
 };
 
-export async function dailyLimitReached(ipHash: string): Promise<string | null> {
-  const perIp = num(process.env.REPEAT_MAX_ANALYSES_PER_IP_PER_DAY, 5);
-  const global = num(process.env.REPEAT_MAX_ANALYSES_PER_DAY, 200);
-  const [mine, all] = await Promise.all([countUsage(ipHash), countUsage()]);
+export async function dailyLimitReached(ipHash: string, kind: UsageKind = "full"): Promise<string | null> {
+  const perIp =
+    kind === "quick"
+      ? num(process.env.REPEAT_MAX_QUICK_PER_IP_PER_DAY, 25)
+      : num(process.env.REPEAT_MAX_ANALYSES_PER_IP_PER_DAY, 5);
+  const global =
+    kind === "quick" ? num(process.env.REPEAT_MAX_QUICK_PER_DAY, 600) : num(process.env.REPEAT_MAX_ANALYSES_PER_DAY, 200);
+  const [mine, all] = await Promise.all([countUsage(ipHash, kind), countUsage(undefined, kind)]);
   if (mine >= perIp) return `You've reached today's limit of ${perIp} analyses. Please come back tomorrow.`;
   if (all >= global) return "Repeat has reached its daily analysis capacity. Please try again tomorrow.";
   return null;

@@ -21,7 +21,10 @@ What makes it different from a generic "AI GTM consultant":
 
 ## What is built (working today)
 - Repositioned Authority AI site and a Repeat product page.
-- 4-step intake with website lookup, optional fields and drafts saved in the browser.
+- Website-first start: a website and a customer band, then a first read in about 25 seconds. No account, email
+  or confidential data.
+- Optional one-at-a-time questions that update the report in place, and an optional detailed diagnostic
+  (three customer wins), prefilled from the answers.
 - Server-side Claude analysis with structured, schema-validated output and source sanitization.
 - Report with copy-plan, print/PDF, edit answers and regenerate.
 - Feedback capture: usefulness, most valuable recommendation, what was missing, reuse intent, interview opt-in,
@@ -47,8 +50,11 @@ What makes it different from a generic "AI GTM consultant":
 ## Two-minute demo script
 1. **(0:00) `/`** "Authority AI's thesis: intelligence should lead to action. Our first product is Repeat."
 2. **(0:15) `/repeat`** "For founders with 5–20 customers who sold the first ones themselves." Read the hero.
-3. **(0:30) `/repeat/start`** Show the four steps, the optional fields and "Read my website". Point out:
-   "no customer names needed."
+3. **(0:30) `/repeat/start`** Two inputs only: website and customer band. Submit a real website live; it takes
+   about 25 seconds. While it runs: "No account, no email, nothing confidential; it reads only the public site."
+   Show the first read: three obstacles and one experiment, each labelled website / from you / inferred.
+   Answer one optional question ("Where did your last three customers come from?") and show "Updated with your
+   answer".
 4. **(0:50) `/repeat/example`** The banner is fictional on purpose. Walk through:
    - Headline.
    - ICP traits, with the Observed / Hypothesis labels and the cited wins.
@@ -58,5 +64,5 @@ What makes it different from a generic "AI GTM consultant":
 5. **(1:40) Evidence & confidence** "It tells founders what it doesn't know."
 6. **(1:50)** Click "Copy action plan" and show the feedback form. "Every founder who uses it teaches us something."
 
-For a live run, have an `ANTHROPIC_API_KEY` configured. If you demo with real input, pre-fill it beforehand: a
-real analysis takes roughly 30–90 seconds.
+For a live run, have an `ANTHROPIC_API_KEY` configured. A first read takes about 25 seconds and each answer about
+the same. The full diagnostic takes 40–60 seconds, so use the fictional example for that part of the demo.

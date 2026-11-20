@@ -23,7 +23,7 @@ export default function ReportPage() {
           Reports are kept only in the browser where they were created. Start a new one, or look at the example.
         </p>
         <div className="mt-8 flex flex-wrap gap-4">
-          <Link href="/repeat/start" className="btn btn-primary">Analyze my sales motion</Link>
+          <Link href="/repeat/start" className="btn btn-primary">Analyze my revenue motion</Link>
           <Link href="/repeat/example" className="btn btn-secondary">See example report</Link>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Field } from "./Field";
 import { checkReadiness, filledCount, WIN_FIELDS, type Company, type Intake, type Motion, type Win } from "@/lib/repeat/schema";
-import { emptyIntake, emptyWin, loadDraft, saveDraft, saveReport, clearAll } from "@/lib/repeat/local";
+import { emptyIntake, emptyWin, loadDraft, loadQuick, saveDraft, saveReport, clearAll } from "@/lib/repeat/local";
 import { requestAnalysis } from "@/lib/repeat/client";
 
 const STEPS = ["Company", "Customer wins", "Sales motion", "Review"] as const;
@@ -20,8 +20,10 @@ export function IntakeFlow() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [hasQuick, setHasQuick] = useState(false);
 
   useEffect(() => {
+    setHasQuick(!!loadQuick());
     const d = loadDraft();
     if (d?.intake) {
       setIntake(d.intake);
@@ -69,6 +71,14 @@ export function IntakeFlow() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-16 pt-10 sm:px-6 sm:pt-14">
+      <p className="mb-6 flex flex-wrap items-baseline justify-between gap-2 text-xs text-muted">
+        <span className="eyebrow">Full diagnostic · optional · about 15 minutes</span>
+        {hasQuick && (
+          <Link href="/repeat/snapshot" className="link">
+            ← Back to your first read
+          </Link>
+        )}
+      </p>
       <ol className="flex gap-1.5" aria-label="Progress">
         {STEPS.map((s, i) => (
           <li key={s} className="flex-1">
