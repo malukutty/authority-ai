@@ -1,3 +1,4 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { ReportSchema, type Intake, type Report } from "./schema";
@@ -129,9 +130,24 @@ async function callModel(
   schema: ReturnType<typeof pick>,
   instruction: string,
 ): Promise<{ data: Partial<Report>; model: string }> {
+  const out = await structuredCall(schema, SYSTEM_PROMPT, `${buildUserMessage(intake)}
+
+${instruction}`);
+  return { data: out.data as Partial<Report>, model: out.model };
+}
+
+/**
+ * One Claude call with structured output, validated against `schema`.
+ * Maps every failure (rate limit, timeout, auth, refusal, truncation, bad output) to an AnalysisError.
+ */
+export async function structuredCall<S extends z.ZodType>(
+  schema: S,
+  system: string,
+  user: string,
+  effort: "low" | "medium" | "high" = "medium",
+): Promise<{ data: z.infer<S>; model: string }> {
   const anthropic = getClient();
   const model = analysisModel();
-
   const started = Date.now();
   let response;
   try {
@@ -140,11 +156,9 @@ async function callModel(
       max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      output_config: { effort: "medium", format: betaZodOutputFormat(schema) },
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: `${buildUserMessage(intake)}
-
-${instruction}` }],
+      output_config: { effort, format: betaZodOutputFormat(schema) },
+      system,
+      messages: [{ role: "user", content: user }],
     });
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) {
@@ -173,12 +187,12 @@ ${instruction}` }],
     throw new AnalysisError("The analysis was cut short. Please try again.", 502, "truncated");
   }
   console.info(
-    `[repeat] model call ${((Date.now() - started) / 1000).toFixed(1)}s, ${response.usage.output_tokens} output tokens, stop=${response.stop_reason}`,
+    `[repeat] model call ${((Date.now() - started) / 1000).toFixed(1)}s, ${response.usage.output_tokens} output tokens, effort=${effort}, stop=${response.stop_reason}`,
   );
   const check = schema.safeParse(response.parsed_output);
   if (!check.success) {
     console.error("[repeat] schema validation failed", check.error.issues.slice(0, 5));
     throw new AnalysisError("The analysis came back in an unexpected format. Please try again.", 502, "invalid_output");
   }
-  return { data: check.data as Partial<Report>, model: response.model ?? model };
+  return { data: check.data, model: response.model ?? model };
 }

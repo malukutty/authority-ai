@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const STEPS = [
-  ["Describe three wins", "How each customer found you, what made them act, who decided, and why they chose you. No customer names needed."],
-  ["Get a diagnostic", "Your draft ICP, buying triggers and sales process, with every finding marked as observed or still a hypothesis."],
-  ["Run a 30-day plan", "Four weekly experiments with owners and measurable success criteria, built from your own evidence."],
+  ["Enter your website", "Plus a rough customer count. That's it: no account, no email, nothing confidential."],
+  ["Get a first read in under a minute", "A draft ideal customer profile, three likely obstacles to repeatable revenue, and one experiment to try next. Every point labelled as stated on your site, from you, or inferred."],
+  ["Sharpen it, if you want", "Answer optional questions one at a time, such as where your last three customers came from. Each answer updates the report. Go further with the full diagnostic when you're ready."],
 ];
 
 export default function RepeatLanding() {
@@ -19,10 +19,10 @@ export default function RepeatLanding() {
           build a more structured approach to winning the next ones.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
-          <Link href="/repeat/start" className="btn btn-primary">Analyze My Sales Motion</Link>
+          <Link href="/repeat/start" className="btn btn-primary">Analyze My Revenue Motion</Link>
           <Link href="/repeat/example" className="btn btn-secondary">See Example Report</Link>
         </div>
-        <p className="mt-5 text-sm text-muted">Free · About 15 minutes · No account needed</p>
+        <p className="mt-5 text-sm text-muted">Free · Under a minute · Just your website, no account or email</p>
       </section>
 
       <section className="border-t border-rule">
@@ -63,15 +63,15 @@ export default function RepeatLanding() {
           <ul className="max-w-2xl space-y-6 leading-relaxed">
             <li>
               <p className="font-medium">Grounded in your evidence.</p>
-              <p className="text-muted">Every finding cites the win it came from. Nothing is invented about your customers.</p>
+              <p className="text-muted">Every point says where it came from: your website, your answers, or an inference. Nothing is invented about your customers or your numbers.</p>
             </li>
             <li>
               <p className="font-medium">Honest about uncertainty.</p>
-              <p className="text-muted">Three customers can&apos;t prove a pattern. Repeat separates what you&apos;ve observed from what you still need to test, and says what&apos;s missing.</p>
+              <p className="text-muted">A website can&apos;t tell us how your deals were won. Repeat says what it&apos;s guessing, what would make the analysis sharper, and asks only when you choose to answer.</p>
             </li>
             <li>
               <p className="font-medium">Built to act on.</p>
-              <p className="text-muted">You leave with one acquisition hypothesis and a 30-day plan, not a slide of generic advice.</p>
+              <p className="text-muted">You leave with one concrete experiment for your next customers. The optional full diagnostic adds a 30-day plan built from your own wins.</p>
             </li>
           </ul>
         </div>
@@ -81,12 +81,12 @@ export default function RepeatLanding() {
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <p className="display max-w-3xl text-3xl leading-snug sm:text-4xl">Start with what you already know.</p>
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            <Link href="/repeat/start" className="btn btn-primary">Analyze My Sales Motion</Link>
+            <Link href="/repeat/start" className="btn btn-primary">Analyze My Revenue Motion</Link>
             <Link href="/repeat/example" className="link text-sm">See Example Report</Link>
           </div>
           <p className="mt-8 max-w-2xl text-xs leading-relaxed text-muted">
             Repeat is an early product. It produces a diagnostic and a plan to test; it does not guarantee results.
-            Your answers stay in your browser and are only used to generate your report.{" "}
+            We read only your public website; your report stays in your browser.{" "}
             <Link href="/privacy" className="link">Privacy</Link>
           </p>
         </div>

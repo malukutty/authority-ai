@@ -14,7 +14,9 @@ import type { Feedback } from "./repeat/schema";
  * when sending feedback.
  */
 
-export type UsageEvent = { ipHash: string; status: "ok" | "error" | "mock"; model: string; latencyMs: number };
+/** "full" = the detailed diagnostic; "quick" = website-first report and its answer-driven updates. */
+export type UsageKind = "full" | "quick";
+export type UsageEvent = { ipHash: string; status: "ok" | "error" | "mock"; model: string; latencyMs: number; kind?: UsageKind };
 
 export function hashIp(ip: string) {
   const salt = process.env.IP_HASH_SALT || "dev-salt";
@@ -38,6 +40,7 @@ function db() {
       latency_ms integer not null
     )`;
     await sql!`create index if not exists repeat_usage_created_idx on repeat_usage (created_at)`;
+    await sql!`alter table repeat_usage add column if not exists kind text not null default 'full'`;
     await sql!`create table if not exists repeat_feedback (
       id uuid primary key,
       created_at timestamptz not null default now(),
@@ -79,26 +82,30 @@ export async function recordUsage(e: UsageEvent) {
   const s = db();
   if (s) {
     await ready;
-    await s`insert into repeat_usage (ip_hash, status, model, latency_ms) values (${e.ipHash}, ${e.status}, ${e.model}, ${e.latencyMs})`;
+    await s`insert into repeat_usage (ip_hash, status, model, latency_ms, kind) values (${e.ipHash}, ${e.status}, ${e.model}, ${e.latencyMs}, ${e.kind ?? "full"})`;
     return;
   }
-  await appendJsonl("usage.jsonl", { ...e, createdAt: new Date().toISOString() });
+  await appendJsonl("usage.jsonl", { ...e, kind: e.kind ?? "full", createdAt: new Date().toISOString() });
 }
 
-/** Counts successful + failed analyses (not mocks) in the last 24h, optionally for one IP. */
-export async function countUsage(ipHash?: string): Promise<number> {
+/** Counts successful + failed analyses of one kind (not mocks) in the last 24h, optionally for one IP. */
+export async function countUsage(ipHash?: string, kind: UsageKind = "full"): Promise<number> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const s = db();
   if (s) {
     await ready;
     const rows = ipHash
-      ? await s`select count(*)::int as n from repeat_usage where created_at > ${since} and status <> 'mock' and ip_hash = ${ipHash}`
-      : await s`select count(*)::int as n from repeat_usage where created_at > ${since} and status <> 'mock'`;
+      ? await s`select count(*)::int as n from repeat_usage where created_at > ${since} and status <> 'mock' and kind = ${kind} and ip_hash = ${ipHash}`
+      : await s`select count(*)::int as n from repeat_usage where created_at > ${since} and status <> 'mock' and kind = ${kind}`;
     return rows[0]?.n ?? 0;
   }
   const rows = await readJsonl<UsageEvent & { createdAt: string }>("usage.jsonl");
   return rows.filter(
-    (r) => r.status !== "mock" && new Date(r.createdAt) > since && (!ipHash || r.ipHash === ipHash),
+    (r) =>
+      r.status !== "mock" &&
+      (r.kind ?? "full") === kind &&
+      new Date(r.createdAt) > since &&
+      (!ipHash || r.ipHash === ipHash),
   ).length;
 }
 

@@ -28,17 +28,37 @@ example report with a red "no model was called" banner, and is ignored when `NOD
 | `/about` | Company story; archive of earlier essay titles |
 | `/privacy` | Plain-language privacy notice |
 | `/repeat` | Repeat product page |
-| `/repeat/start` | 4-step founder intake (company → wins → sales motion → review) |
-| `/repeat/report` | The founder's diagnostic (read from this browser's local storage) |
+| `/repeat/start` | **Website-first start:** company website + paying-customer band, nothing else |
+| `/repeat/snapshot` | First read (ICP, 3 obstacles, 1 experiment, what's missing) + one-at-a-time "Improve my analysis" questions |
+| `/repeat/deep` | Optional full diagnostic: the detailed 4-step intake, prefilled from the quick flow |
+| `/repeat/report` | The full diagnostic report (read from this browser's local storage) |
 | `/repeat/example` | Illustrative report for a fictional company ("Dockett") |
 | `POST /api/repeat/analyze` | Validates intake, applies limits, calls Claude, validates and sanitizes output |
+| `POST /api/repeat/site` | Reads the public website (homepage + up to 2 key subpages); no model call |
+| `POST /api/repeat/quick` | Website-first report; called again with accumulated answers to update it |
 | `POST /api/repeat/extract` | Server-side read of a public homepage (title, description, headings only) |
 | `POST /api/repeat/feedback` | Stores feedback; email only with consent |
 
 Old routes redirect: `/company-brain` → `/repeat`, `/demo` → `/repeat/example`, `/framework` → `/about`,
 `/papers` → `/about#writing`.
 
-## How analysis works
+## Website-first flow
+
+1. Founder enters a website and a customer band (`0–4`, `5–20`, `21–50`, `50+`).
+2. `/api/repeat/site` reads the homepage plus up to two key subpages (customers, about, pricing). This takes about
+   1 second and makes no model call. If there's too little readable text (under 300 characters, typical of sites
+   that render in the browser), the founder is asked for two sentences instead.
+3. `/api/repeat/quick` re-reads the site server-side and writes the first read with Claude (`lib/repeat/quick.ts`,
+   effort `low`, about 25 seconds). Every claim is labelled `website`, `founder` or `inferred`.
+4. Optional questions are asked one at a time, starting with what the report says it needs most. Each answer
+   calls `/api/repeat/quick` again with all answers so far; the report updates in place and lists what changed.
+5. "Start the full diagnostic" carries the answers into `/repeat/deep`. Only what the founder typed is copied,
+   never text taken from the website.
+
+Limits: quick reports and updates have their own allowance (`REPEAT_MAX_QUICK_PER_IP_PER_DAY`, default 25;
+`REPEAT_MAX_QUICK_PER_DAY`, default 600; 6 a minute per IP), separate from the full diagnostic.
+
+## How the full diagnostic works
 
 1. `IntakeSchema` (Zod) validates input: every field optional, 1,200-char cap, at most 5 wins.
    `checkReadiness` requires "what you sell" plus at least one win with three or more details.

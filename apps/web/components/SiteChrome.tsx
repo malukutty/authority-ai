@@ -50,9 +50,9 @@ export function RepeatHeader() {
           <Link href="/repeat/example" className="whitespace-nowrap text-muted hover:text-ink">
             Example<span className="hidden sm:inline"> report</span>
           </Link>
-          <Link href="/repeat/start" className="whitespace-nowrap border-b border-ink pb-0.5">
+          <Link href="/repeat/start" aria-label="Analyze my revenue motion" className="whitespace-nowrap border-b border-ink pb-0.5">
             <span className="sm:hidden">Start</span>
-            <span className="hidden sm:inline">Analyze my sales motion</span>
+            <span className="hidden sm:inline">Analyze my revenue motion</span>
           </Link>
         </nav>
       </div>

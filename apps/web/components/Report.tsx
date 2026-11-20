@@ -114,7 +114,7 @@ export function ReportView({ data, onReplace }: { data: StoredReport; onReplace?
 
   function edit() {
     saveDraft(data.intake, 0);
-    router.push("/repeat/start");
+    router.push("/repeat/deep");
   }
 
   async function regenerate() {
@@ -180,7 +180,7 @@ export function ReportView({ data, onReplace }: { data: StoredReport; onReplace?
         )}
         {isExample && (
           <Link href="/repeat/start" className="btn btn-secondary">
-            Analyze my own sales motion
+            Analyze my own revenue motion
           </Link>
         )}
         <span className="sr-only" aria-live="polite">
