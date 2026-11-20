@@ -50,7 +50,11 @@ export const hostOf = (u: string) => {
   }
 };
 
-export function QuickStart() {
+/**
+ * The two-input start. `page`: the full /repeat/start screen. `card`: embedded in the landing page.
+ */
+export function QuickStart({ variant = "page" }: { variant?: "page" | "card" }) {
+  const card = variant === "card";
   const router = useRouter();
   const id = useId();
   const [url, setUrl] = useState("");
@@ -125,16 +129,25 @@ export function QuickStart() {
   const busy = phase.kind === "reading" || phase.kind === "writing";
 
   return (
-    <div className="mx-auto max-w-xl px-4 pb-20 pt-12 sm:px-6 sm:pt-20">
-      <p className="eyebrow">Free · No account · No email</p>
-      <h1 className="display mt-4 text-4xl leading-tight sm:text-5xl">See your revenue motion in under a minute.</h1>
-      <p className="mt-4 leading-relaxed text-muted">
-        Give us your website. We&apos;ll read it and send back a first read: who you seem to serve, three likely obstacles
-        to repeatable revenue, and one experiment to try next.
-      </p>
+    <div className={card ? "" : "mx-auto max-w-xl px-4 pb-20 pt-12 sm:px-6 sm:pt-20"}>
+      {card ? (
+        <>
+          <p className="eyebrow">Start here · free</p>
+          <h2 className="display mt-3 text-[1.75rem] leading-tight">See your revenue motion in under a minute.</h2>
+        </>
+      ) : (
+        <>
+          <p className="eyebrow">Free · No account · No email</p>
+          <h1 className="display mt-4 text-4xl leading-tight sm:text-5xl">See your revenue motion in under a minute.</h1>
+          <p className="mt-4 leading-relaxed text-muted">
+            Give us your website. We&apos;ll read it and send back a first read: who you seem to serve, three likely
+            obstacles to repeatable revenue, and one experiment to try next.
+          </p>
+        </>
+      )}
 
       {phase.kind !== "manual" && (
-        <form onSubmit={submit} className="mt-10 space-y-7" noValidate aria-busy={busy}>
+        <form onSubmit={submit} className={card ? "mt-6 space-y-5" : "mt-10 space-y-7"} noValidate aria-busy={busy}>
           <div className="space-y-1.5">
             <label htmlFor={`${id}-url`} className="block text-[0.9375rem] font-medium">
               Company website
@@ -265,7 +278,7 @@ export function QuickStart() {
       )}
 
       {phase.kind === "form" && existing && (
-        <p className="mt-10 border-t border-rule pt-6 text-sm text-muted">
+        <p className={`${card ? "mt-6" : "mt-10"} border-t border-rule pt-6 text-sm text-muted`}>
           You have a report for {hostOf(existing.url) || existing.report.company.name}.{" "}
           <Link href="/repeat/snapshot" className="link text-ink">
             Open it
@@ -273,13 +286,22 @@ export function QuickStart() {
         </p>
       )}
 
-      <p className="mt-10 text-xs leading-relaxed text-muted">
-        We read only your public website. Your report is kept in this browser, not on our servers. The website text and
-        any answers you add are sent to our AI provider (Anthropic) to write the report.{" "}
-        <Link href="/privacy" className="link">
-          Privacy
-        </Link>
-      </p>
+      {card ? (
+        <p className="mt-5 text-xs leading-relaxed text-muted">
+          No account or email. We read your public website, nothing else.{" "}
+          <Link href="/privacy" className="link">
+            Privacy
+          </Link>
+        </p>
+      ) : (
+        <p className="mt-10 text-xs leading-relaxed text-muted">
+          We read only your public website. Your report is kept in this browser, not on our servers. The website text and
+          any answers you add are sent to our AI provider (Anthropic) to write the report.{" "}
+          <Link href="/privacy" className="link">
+            Privacy
+          </Link>
+        </p>
+      )}
     </div>
   );
 }
