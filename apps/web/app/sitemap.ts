@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, STANDALONE } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return ["", "/repeat", "/repeat/example", "/about", "/privacy"].map((p) => ({ url: `${SITE_URL}${p}` }));
+  const paths = STANDALONE
+    ? ["/repeat", "/repeat/example", "/privacy"]
+    : ["", "/repeat", "/repeat/example", "/about", "/privacy"];
+  return paths.map((p) => ({ url: `${SITE_URL}${p}` }));
 }

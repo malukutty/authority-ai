@@ -84,16 +84,20 @@ addresses (rechecked on every redirect), times out after 8s and caps pages at 1.
 | `IP_HASH_SALT` | yes in production | Long random string. |
 | `REPEAT_MODEL` | no | Default `claude-opus-5-5`. |
 | `REPEAT_MAX_ANALYSES_PER_IP_PER_DAY` / `REPEAT_MAX_ANALYSES_PER_DAY` | no | Defaults 5 / 200. |
-| `NEXT_PUBLIC_SITE_URL` | no | Default `https://theauthority.company`. |
+| `NEXT_PUBLIC_SITE_URL` | no | This deployment's public URL. |
+| `NEXT_PUBLIC_REPEAT_STANDALONE` | no | `1` = Repeat on its own subdomain; company links go to `NEXT_PUBLIC_COMPANY_URL`. |
+| `NEXT_PUBLIC_COMPANY_URL` | no | Default `https://theauthority.company`. |
 | `REPEAT_MOCK` | dev only | `1` = canned report, no model call. |
 
-## Deploy (Vercel, recommended)
+## Deploy
 
-1. Import the GitHub repo in Vercel and set **Root Directory** to `apps/web`.
-2. Add the environment variables above (Production + Preview).
-3. Create a Postgres database (Vercel Marketplace → Neon is simplest) and set `DATABASE_URL`.
-4. Deploy to a preview URL and run through `/repeat/start` end to end.
-5. Only then point `theauthority.company` DNS at Vercel. This **replaces the current Lovable site**.
+**Current plan:** theauthority.company stays on Lovable, and Repeat runs on Vercel at
+`repeat.theauthority.company` in standalone mode (`NEXT_PUBLIC_REPEAT_STANDALONE=1`). The step-by-step guide,
+including the Name.com DNS record, is in `docs/DEPLOY_REPEAT_SUBDOMAIN.md`. The matching Lovable homepage update
+is in `docs/LOVABLE_HOMEPAGE_UPDATE.md`.
+
+**Later option:** to move the whole site off Lovable, deploy without standalone mode and point the domain at
+Vercel. That replaces the Lovable site.
 
 **Check your Anthropic rate limits before sharing widely.** Each analysis makes two parallel Opus calls of
 ~4–5k output tokens each. On a newly funded account, three analyses started at once slowed to ~9 minutes each,
