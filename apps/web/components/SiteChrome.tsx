@@ -1,9 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
+import { companyHref } from "@/lib/site";
 
 export function AuthorityLogo() {
   return (
-    <Link href="/" className="flex items-center gap-2.5" aria-label="Authority AI home">
+    <Link href={companyHref("/")} className="flex items-center gap-2.5" aria-label="Authority AI home">
       <Image src="/authority-mark.png" alt="" width={22} height={22} className="dark:invert" priority />
       <span className="display text-[1.05rem] tracking-tight">Authority AI</span>
     </Link>
@@ -16,9 +17,9 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <AuthorityLogo />
         <nav aria-label="Primary" className="flex items-center gap-4 text-[0.8125rem] sm:gap-7">
-          <Link href="/#philosophy" className="hidden text-muted hover:text-ink sm:inline">Philosophy</Link>
-          <Link href="/#products" className="hidden text-muted hover:text-ink sm:inline">Products</Link>
-          <Link href="/about" className="text-muted hover:text-ink">About</Link>
+          <Link href={companyHref("/#philosophy")} className="hidden text-muted hover:text-ink sm:inline">Philosophy</Link>
+          <Link href={companyHref("/#products")} className="hidden text-muted hover:text-ink sm:inline">Products</Link>
+          <Link href={companyHref("/about")} className="text-muted hover:text-ink">About</Link>
           <Link href="/repeat" className="whitespace-nowrap border-b border-ink pb-0.5">Explore Repeat</Link>
         </nav>
       </div>
@@ -41,7 +42,7 @@ export function RepeatHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
         <div className="flex items-baseline gap-2.5">
           <RepeatWordmark />
-          <Link href="/" className="hidden text-[0.6875rem] uppercase tracking-[0.2em] text-muted hover:text-ink sm:inline">
+          <Link href={companyHref("/")} className="hidden text-[0.6875rem] uppercase tracking-[0.2em] text-muted hover:text-ink sm:inline">
             by authority ai
           </Link>
         </div>
@@ -70,7 +71,7 @@ export function SiteFooter() {
         </div>
         <nav aria-label="Footer" className="flex flex-wrap gap-5">
           <Link href="/repeat" className="hover:text-ink">Repeat</Link>
-          <Link href="/about" className="hover:text-ink">About</Link>
+          <Link href={companyHref("/about")} className="hover:text-ink">About</Link>
           <Link href="/privacy" className="hover:text-ink">Privacy</Link>
         </nav>
       </div>
