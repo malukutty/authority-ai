@@ -21,3 +21,6 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local Claude Code logs
+.claude/*.log
