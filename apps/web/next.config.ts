@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
+  async rewrites() {
+    // Browsers and bookmark tools request /favicon.ico directly; serve the right icon for this deployment.
+    const ico = process.env.NEXT_PUBLIC_REPEAT_STANDALONE === "1" ? "/repeat-favicon.ico" : "/favicon.png";
+    return [{ source: "/favicon.ico", destination: ico }];
+  },
   async redirects() {
     // Standalone Repeat on its own subdomain: the company site lives elsewhere (Lovable).
     if (process.env.NEXT_PUBLIC_REPEAT_STANDALONE === "1") {

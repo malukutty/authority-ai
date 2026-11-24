@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Newsreader, Work_Sans } from "next/font/google";
 import "./globals.css";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, STANDALONE } from "@/lib/site";
+import { AUTHORITY_ICONS, REPEAT_ICONS } from "@/lib/icons";
 
 const newsreader = Newsreader({
   subsets: ["latin"],
@@ -22,7 +23,8 @@ export const metadata: Metadata = {
   title: { default: "Authority AI | Intelligence should lead to action", template: "%s | Authority AI" },
   description:
     "Authority AI builds intelligent systems that turn knowledge into execution. Our mission is to make business execution repeatable. Our first product is Repeat.",
-  icons: { icon: "/favicon.png" },
+  // On the standalone Repeat subdomain every page (Privacy too) carries the Repeat icon.
+  icons: STANDALONE ? REPEAT_ICONS : AUTHORITY_ICONS,
   openGraph: {
     type: "website",
     siteName: "Authority AI",
